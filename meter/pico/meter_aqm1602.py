@@ -1,5 +1,17 @@
-# Raspberry Pi の動作確認 ADC入力に応じてLEDの輝度を変更
-# Copyright (c) 2022 Wataru KUNINO
+###############################################################################
+# Stereo Audio Peak Meter for Raspberry Pi Pico
+###############################################################################
+# キャラクタ液晶(LCD)にレベルメータ表示を行います
+#
+#                                              Copyright (c) 2022 Wataru KUNINO
+###############################################################################
+
+# ADC接続方法: 直流カットC=1u～10uFとプルアップ抵抗R=33kΩ経由で下記に接続する
+##############################
+# Audio   # Pico # GPIO (ADC)
+##############################
+#    Lch  #  31  # ADC0(GP26)
+#    Rch  #  32  # ADC1(GP27)
 
 # AE-AQM0802A, AE-AQM1602A, AQM1602Y 
 ##############################
@@ -10,22 +22,29 @@
 #    SCL  #  7   # GP5
 #    GND  #  8   # GND
 ##############################
-# 参考文献
+# 参考文献1 LCD用I2C制御サンプル
 # https://github.com/bokunimowakaru/RaspberryPi/blob/master/libs/soft_i2c.c
 # Copyright (c) 2014-2017 Wataru KUNINO https://bokunimo.net/raspi/
+#
+# 参考文献2 Sitronix LCDコントローラST7032 データシート (2008/08/18)
+# https://akizukidenshi.com/download/ds/sitronix/st7032.pdf
+
+# Raspberry Pi Picoの消費電流
+#  25 mA AQM1602Y-NLW-FBW(白色バックライト) バックライト 3.3V直ON
+#  22 mA バックライトOFF
 
 aqm1602 = 0x3E                          # LCD AQM1602のI2Cアドレス
 
-from machine import ADC,Pin,PWM,I2C     # ライブラリmachineのADCを組み込む
+from machine import ADC,Pin,PWM,I2C     # ライブラリmachineのADC等を組み込む
 from utime import sleep                 # μtimeからsleepを組み込む
-from math import log10
+from math import log10                  # 対数変換用モジュールを組み込む
 
-freq = 40000                            # AD変換周波数
+freq = 40000                            # AD変換周波数(Hz)
 window = 1024                           # 1回あたりの計測サンプル数
 display = 'AC'                          # メータ切り替え
 dispAcMaxMv = 1000                      # AC入力電圧(mV)
 dispAcRangeDb = 40                      # レベルメータ表示範囲(dB)
-sample_wait = 1 / freq                  # 計測周期
+sample_wait = 1 / freq                  # 計測周期(Sec.)
 
 vdd = Pin(3, Pin.OUT)                   # GP3をAQM1602のV+ピンに接続
 vdd.value(1)                            # V+用に3.3Vを出力
@@ -108,19 +127,21 @@ while True:                             # 繰り返し処理
             if level > dispAcRangeDb:
                 level = dispAcRangeDb
             for i in range(16):
-                if (i > 0 and i == peakDb[ch] // 2) or i <= level // 2:
-                    if i * 2 + 1 == peakDb[ch]:
-                        if i * 2 == level:
-                            text[i] = 0x02
-                        else:
-                            text[i] = 0x03
-                    else:
-                        if i * 2 == level:
-                            text[i] = 0x01
-                        else:
-                            text[i] = 0x02
-                else:
-                    text[i] = 0x00
+                i22 = i * 2 + 1                 # セルの右側に相当するレベル値
+                if i < level // 2:              # セル位置がレベル未満の時
+                    text[i] = 0x02              # セルの両側を点灯
+                elif i == level // 2:           # セル位置がレベル位置の時
+                    if i22 == level or i22 == peakDb[ch]:   # セルの右までの時
+                        text[i] = 0x02          # セルの両側を点灯
+                    else:                       # (セルの左までの時)
+                        text[i] = 0x01          # セルの左側を点灯
+                elif i > 0 and i == peakDb[ch] // 2: # ピーク単独表示位置の時
+                    if i22 == peakDb[ch]:       # ピーク位置が右側のとき
+                        text[i] = 0x03          # セルの右側のみ単独点灯
+                    else:                       # (ピーク位置が左側の時)
+                        text[i] = 0x01          # セルの左側を点灯
+                else:                           # 点灯条件に該当しないとき
+                    text[i] = 0x00              # 非点灯表示
             if ch == 0:
                 i2c.writeto_mem(aqm1602, 0x00, b'\x80')
             else:
