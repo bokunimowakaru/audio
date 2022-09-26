@@ -6,32 +6,7 @@
 #                                              Copyright (c) 2022 Wataru KUNINO
 ###############################################################################
 
-# ADC接続方法: 直流カットC=1u～10uFとプルアップ抵抗R=33kΩ経由で下記に接続する
-##############################
-# Audio   # Pico # GPIO (ADC)
-##############################
-#    Lch  #  31  # ADC0(GP26)
-#    Rch  #  32  # ADC1(GP27)
-
-# AE-AQM0802A, AE-AQM1602A, AQM1602Y 
-##############################
-# AQM1602 # Pico # GPIO
-##############################
-#     +V  #  5   # GP3
-#    SDA  #  6   # GP4
-#    SCL  #  7   # GP5
-#    GND  #  8   # GND
-##############################
-# 参考文献1 LCD用I2C制御サンプル
-# https://github.com/bokunimowakaru/RaspberryPi/blob/master/libs/soft_i2c.c
-# Copyright (c) 2014-2017 Wataru KUNINO https://bokunimo.net/raspi/
-#
-# 参考文献2 Sitronix LCDコントローラST7032 データシート (2008/08/18)
-# https://akizukidenshi.com/download/ds/sitronix/st7032.pdf
-
-# Raspberry Pi Picoの消費電流
-#  25 mA AQM1602Y-NLW-FBW(白色バックライト) バックライト 3.3V直ON
-#  22 mA バックライトOFF
+# 回路図は meter_schematic.png を参照してください。
 
 aqm1602 = 0x3E                          # LCD AQM1602のI2Cアドレス
 
@@ -46,22 +21,30 @@ dispAcMaxMv = 1000                      # AC入力電圧(mV)
 dispAcRangeDb = 40                      # レベルメータ表示範囲(dB)
 sample_wait = 1 / freq                  # 計測周期(Sec.)
 
-vdd = Pin(3, Pin.OUT)                   # GP3をAQM1602のV+ピンに接続
-vdd.value(1)                            # V+用に3.3Vを出力
-i2c = I2C(0, scl=Pin(5), sda=Pin(4))    # GP5をAQM1602のSCL,GP4をSDAに接続
-i2c.writeto_mem(aqm1602, 0x00, b'\x39') # LCD制御 IS=1
-i2c.writeto_mem(aqm1602, 0x00, b'\x14') # LCD制御 OSC=4
-i2c.writeto_mem(aqm1602, 0x00, b'\x73') # LCD制御 コントラスト  3
-i2c.writeto_mem(aqm1602, 0x00, b'\x5E') # LCD制御 Power/Cont    E
-i2c.writeto_mem(aqm1602, 0x00, b'\x6C') # LCD制御 FollowerCtrl  C
-sleep(0.2);
-i2c.writeto_mem(aqm1602, 0x00, b'\x38') # LCD制御 IS=0
-i2c.writeto_mem(aqm1602, 0x00, b'\x0C') # LCD制御 DisplayON     C
+# LED 初期化処理
+led = PWM(Pin(25, Pin.OUT))             # PWM出力用インスタンスledを生成
+led.freq(60)
 
-# レベルメータ用フォント作成 0x00～0x02:点灯数
-# 参考文献
-# https://github.com/bokunimowakaru/xbeeCoord/tree/master/xbee_arduino/XBee_Coord/examples/sample11_lcd
-# Copyright (c) 2013 Wataru KUNINO https://bokunimo.net/xbee/
+
+# ADC 初期化処理
+adc0 = ADC(0)                           # ADCポート0(Pin31)用adc0を生成
+adc1 = ADC(1)                           # ADCポート1(Pin32)用adc1を生成
+
+# LCD 初期化処理
+lcd_vdd = Pin(3, Pin.OUT)               # GP3をAQM1602のV+ピンに接続
+lcd_i2c = I2C(0, scl=Pin(5),sda=Pin(4)) # GP5をAQM1602のSCL,GP4をSDAに接続
+lcd_vdd.value(0)                            # V+に0Vを出力
+sleep(0.5);
+lcd_vdd.value(1)                            # V+用に3.3Vを出力
+sleep(0.2);
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x39') # LCD制御 IS=1
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x14') # LCD制御 OSC=4
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x73') # LCD制御 コントラスト  0x3
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x5E') # LCD制御 Power/Cont    0xE
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x6C') # LCD制御 FollowerCtrl  0xC
+sleep(0.2);
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x38') # LCD制御 IS=0
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x0C') # LCD制御 DisplayON     0xC
 font_lv = [
     b'\x00\x01\x00\x01\x00\x01\x00\x15',
     b'\x18\x19\x18\x19\x18\x19\x18\x15',
@@ -69,8 +52,15 @@ font_lv = [
     b'\x03\x03\x03\x03\x03\x03\x03\x15'
 ]
 for j in range(4):                      # LCD制御 フォントの転送
-    i2c.writeto_mem(aqm1602, 0x00, bytes([0x40+j*8])) # CGRAM address 0x00～0x02
-    i2c.writeto_mem(aqm1602, 0x40, font_lv[j]) # フォント
+    lcd_i2c.writeto_mem(aqm1602, 0x00, bytes([0x40+j*8])) # CGRAM address 0x00～0x02
+    lcd_i2c.writeto_mem(aqm1602, 0x40, font_lv[j]) # フォント
+
+def lcdPrint(y, text):
+    if y == 0:
+        lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x80')
+    else:
+        lcd_i2c.writeto_mem(aqm1602, 0x00, b'\xC0')
+    lcd_i2c.writeto_mem(aqm1602, 0x40, bytearray(text))
 
 def calc_volt2db(volt):                 # dB電圧を0～32の表示尺で応答する
     i = int((20 * log10(volt/dispAcMaxMv) + dispAcRangeDb)/dispAcRangeDb * 32)
@@ -80,10 +70,11 @@ def calc_volt2db(volt):                 # dB電圧を0～32の表示尺で応答
         i = 32
     return i
 
-led = PWM(Pin(25, Pin.OUT))             # PWM出力用インスタンスledを生成
-led.freq(60)
-adc0 = ADC(0)                           # ADCポート0(Pin31)用adc0を生成
-adc1 = ADC(1)                           # ADCポート1(Pin32)用adc1を生成
+led.duty_u16(0xffff)
+lcdPrint(0, 'Audio Peak Meter')
+lcdPrint(1, 'by Wataru Kunino')
+sleep(3);
+led.duty_u16(0x0000)
 
 peak_i = 0
 peakLv = [0, 0]
@@ -142,10 +133,44 @@ while True:                             # 繰り返し処理
                         text[i] = 0x01          # セルの左側を点灯
                 else:                           # 点灯条件に該当しないとき
                     text[i] = 0x00              # 非点灯表示
-            if ch == 0:
-                i2c.writeto_mem(aqm1602, 0x00, b'\x80')
-            else:
-                i2c.writeto_mem(aqm1602, 0x00, b'\xC0')
-            i2c.writeto_mem(aqm1602, 0x40, text)
+            lcdPrint(ch, text)
             print('Voltage AC =', voltAc[ch], 'Peak =', peakLv[ch], 'Level =', level)
     led.duty_u16((valAc[0]+valAc[1])//2)                   # LEDを点灯する
+
+###############################################################################
+# ADC接続方法: 直流カットC=1u～10uFとプルアップ抵抗R=33kΩ経由で下記に接続する
+##############################
+# Audio   # Pico # GPIO (ADC)
+##############################
+#    Lch  #  31  # ADC0(GP26)
+#    Rch  #  32  # ADC1(GP27)
+
+###############################################################################
+# AE-AQM0802A, AE-AQM1602A, AQM1602Y 
+##############################
+# AQM1602 # Pico # GPIO
+##############################
+#     +V  #  5   # GP3
+#    SDA  #  6   # GP4
+#    SCL  #  7   # GP5
+#    GND  #  8   # GND
+##############################
+
+###############################################################################
+# 参考文献1 LCD用I2C制御サンプル
+# https://github.com/bokunimowakaru/RaspberryPi/blob/master/libs/soft_i2c.c
+# Copyright (c) 2014-2017 Wataru KUNINO https://bokunimo.net/raspi/
+
+###############################################################################
+# 参考文献2 Sitronix LCDコントローラST7032 データシート (2008/08/18)
+# https://akizukidenshi.com/download/ds/sitronix/st7032.pdf
+
+###############################################################################
+# 参考文献3 レベルメータ用フォント作成 0x00～0x02:点灯数
+# https://github.com/bokunimowakaru/xbeeCoord/tree/master/xbee_arduino/XBee_Coord/examples/sample11_lcd
+# Copyright (c) 2013 Wataru KUNINO https://bokunimo.net/xbee/
+
+###############################################################################
+# Raspberry Pi Picoの消費電流
+#  47 mA AQM1602Y-NLW-FBW(白色バックライト) バックライト 3.3V直ON
+#  22 mA バックライトOFF
