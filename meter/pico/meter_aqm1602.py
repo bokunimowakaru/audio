@@ -19,6 +19,8 @@ window = 1024                           # 1回あたりの計測サンプル数
 display = 'AC'                          # メータ切り替え
 dispAcMaxMv = 1000                      # AC入力電圧(mV)
 dispAcRangeDb = 40                      # レベルメータ表示範囲(dB)
+dispScale = 4                           # 罫線のセル間隔(0～8,14,15)
+peakMode = 'voltage'                    # 電力尖頭値=power,電圧尖頭値=voltage
 sample_wait = 1 / freq                  # 計測周期(Sec.)
 
 # LED 初期化処理
@@ -45,15 +47,29 @@ lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x6C') # LCD制御 FollowerCtrl  0xC
 sleep(0.2);
 lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x38') # LCD制御 IS=0
 lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x0C') # LCD制御 DisplayON     0xC
-font_lv = [
+font_lv = [[
     b'\x00\x01\x00\x01\x00\x01\x00\x15',
     b'\x18\x19\x18\x19\x18\x19\x18\x15',
     b'\x1B\x1B\x1B\x1B\x1B\x1B\x1B\x15',
     b'\x03\x03\x03\x03\x03\x03\x03\x15'
-]
-for j in range(4):                      # LCD制御 フォントの転送
-    lcd_i2c.writeto_mem(aqm1602, 0x00, bytes([0x40+j*8])) # CGRAM address 0x00～0x02
-    lcd_i2c.writeto_mem(aqm1602, 0x40, font_lv[j]) # フォント
+],[
+    b'\x00\x01\x00\x01\x00\x01\x00\x01',
+    b'\x18\x19\x18\x19\x18\x19\x00\x01',
+    b'\x1B\x1B\x1B\x1B\x1B\x1B\x00\x01',
+    b'\x03\x03\x03\x03\x03\x03\x00\x01'
+],[
+    b'\x01\x01\x00\x01\x01\x00\x01\x01',
+    b'\x19\x19\x18\x19\x19\x18\x01\x01',
+    b'\x1B\x1B\x1B\x1B\x1B\x1B\x01\x01',
+    b'\x03\x03\x03\x03\x03\x03\x01\x01'
+]]
+lcd_i2c.writeto_mem(aqm1602, 0x00, bytes([0x40])) # CGRAM address 0x00～0x02
+if dispScale == 0:
+    for j in range(4):                  # LCD制御 フォントの転送
+        lcd_i2c.writeto_mem(aqm1602, 0x40, font_lv[0][j]) # フォント
+else:
+    for j in range(8):
+        lcd_i2c.writeto_mem(aqm1602, 0x40, font_lv[1 if j<4 else 2][j%4])
 
 def lcdPrint(y, text):
     if y == 0:
@@ -98,10 +114,18 @@ while True:                             # 繰り返し処理
     peak_i += 1
     for ch in range(2):
         valDc[ch] = int(valSum[ch] / window + 0.5)
-        acSum = 0
-        for i in range(window):
-            acSum += abs(vals[ch][i] - valDc[ch])
-        valAc[ch] = int(acSum / window + 0.5)
+        if peakMode == 'power':
+            acSum = 0
+            for i in range(window):
+                acSum += abs(vals[ch][i] - valDc[ch])
+            valAc[ch] = int(acSum / window + 0.5)
+        elif peakMode == 'voltage':
+            acVpp = 0
+            for i in range(window):
+                vpp = abs(vals[ch][i] - valDc[ch])
+                if vpp > acVpp:
+                    acVpp = vpp
+            valAc[ch] = int(acVpp / 1.41421356 + 0.5)
         voltDc[ch] = valDc[ch] * 3300 / 65535       # 直流分ADC値を電圧(mV)に変換
         voltAc[ch] = valAc[ch] * 3300 / 65535       # 交流分ADC値を電圧(mV)に変換
         if peak_i > 16:
@@ -133,6 +157,8 @@ while True:                             # 繰り返し処理
                         text[i] = 0x01          # セルの左側を点灯
                 else:                           # 点灯条件に該当しないとき
                     text[i] = 0x00              # 非点灯表示
+                if dispScale > 0 and i % dispScale == dispScale - 1:
+                    text[i] += 0x04
             lcdPrint(ch, text)
             print('Voltage AC =', voltAc[ch], 'Peak =', peakLv[ch], 'Level =', level)
     led.duty_u16((valAc[0]+valAc[1])//2)                   # LEDを点灯する
