@@ -17,7 +17,7 @@ from math import log10                  # 対数変換用モジュールを組�
 freq = 40000                            # AD変換周波数(Hz)
 window = 1024                           # 1回あたりの計測サンプル数
 display = 'AC'                          # メータ切り替え
-dispAcMaxMv = 1000                      # AC入力電圧(mV)
+dispAcMaxMv = 1000                      # AC入力電圧(mV rms)
 dispAcRangeDb = 40                      # レベルメータ表示範囲(dB)
 dispScale = 4                           # 罫線のセル間隔(0～8,14,15)
 peakMode = 'voltage'                    # 電力尖頭値=power,電圧尖頭値=voltage
@@ -35,18 +35,11 @@ adc1 = ADC(1)                           # ADCポート1(Pin32)用adc1を生成
 # LCD 初期化処理
 lcd_vdd = Pin(3, Pin.OUT)               # GP3をAQM1602のV+ピンに接続
 lcd_i2c = I2C(0, scl=Pin(5),sda=Pin(4)) # GP5をAQM1602のSCL,GP4をSDAに接続
-lcd_vdd.value(0)                            # V+に0Vを出力
-sleep(0.5);
-lcd_vdd.value(1)                            # V+用に3.3Vを出力
-sleep(0.2);
-lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x39') # LCD制御 IS=1
-lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x14') # LCD制御 OSC=4
-lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x73') # LCD制御 コントラスト  0x3
-lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x5E') # LCD制御 Power/Cont    0xE
-lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x6C') # LCD制御 FollowerCtrl  0xC
-sleep(0.2);
-lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x38') # LCD制御 IS=0
-lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x0C') # LCD制御 DisplayON     0xC
+lcd_vdd.value(0)                        # V+に0Vを出力
+sleep(0.5)                              # リセット・ホールド
+lcd_vdd.value(1)                        # V+用に3.3Vを出力
+sleep(0.2)                              # 起動待ち時間
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x39\x14\x73\x5E\x6C\x38\x0C')
 font_lv = [[
     b'\x00\x01\x00\x01\x00\x01\x00\x15',
     b'\x18\x19\x18\x19\x18\x19\x18\x15',
@@ -64,19 +57,19 @@ font_lv = [[
     b'\x03\x03\x03\x03\x03\x03\x01\x01'
 ]]
 lcd_i2c.writeto_mem(aqm1602, 0x00, bytes([0x40])) # CGRAM address 0x00～0x02
-if dispScale == 0:
-    for j in range(4):                  # LCD制御 フォントの転送
+if dispScale == 0:                      # スケール表示なしの時
+    for j in range(4):                  # LCD制御 フォント4文字の転送
         lcd_i2c.writeto_mem(aqm1602, 0x40, font_lv[0][j]) # フォント
-else:
-    for j in range(8):
+else:                                   # スケール表示ありの時
+    for j in range(8):                  # LCD制御 フォント8文字の転送
         lcd_i2c.writeto_mem(aqm1602, 0x40, font_lv[1 if j<4 else 2][j%4])
 
-def lcdPrint(y, text):
-    if y == 0:
-        lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x80')
-    else:
-        lcd_i2c.writeto_mem(aqm1602, 0x00, b'\xC0')
-    lcd_i2c.writeto_mem(aqm1602, 0x40, bytearray(text))
+def lcdPrint(y, text):                  # LCDに文字を表示する関数
+    if y == 0:                                      # LCDの1行目
+        lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x80') # 1行目のアドレスを設定
+    else:                                           # LCDの2行目
+        lcd_i2c.writeto_mem(aqm1602, 0x00, b'\xC0') # 2行目のアドレスを設定
+    lcd_i2c.writeto_mem(aqm1602, 0x40, bytearray(text)) # バイト列に変換して転送
 
 def calc_volt2db(volt):                 # dB電圧を0～32の表示尺で応答する
     i = int((20 * log10(volt/dispAcMaxMv) + dispAcRangeDb)/dispAcRangeDb * 32)
@@ -186,6 +179,16 @@ while True:                             # 繰り返し処理
 # 参考文献1 LCD用I2C制御サンプル
 # https://github.com/bokunimowakaru/RaspberryPi/blob/master/libs/soft_i2c.c
 # Copyright (c) 2014-2017 Wataru KUNINO https://bokunimo.net/raspi/
+'''
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x39') # LCD制御 IS=1
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x14') # LCD制御 OSC=4
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x73') # LCD制御 コントラスト  0x3
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x5E') # LCD制御 Power/Cont    0xE
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x6C') # LCD制御 FollowerCtrl  0xC
+sleep(0.2);
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x38') # LCD制御 IS=0
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x0C') # LCD制御 DisplayON     0xC
+'''
 
 ###############################################################################
 # 参考文献2 Sitronix LCDコントローラST7032 データシート (2008/08/18)
