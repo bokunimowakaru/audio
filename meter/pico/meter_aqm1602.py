@@ -11,10 +11,10 @@
 aqm1602 = 0x3E                          # LCD AQM1602のI2Cアドレス
 
 from machine import ADC,Pin,PWM,I2C     # ライブラリmachineのADC等を組み込む
-from utime import sleep                 # μtimeからsleepを組み込む
+from utime import sleep,ticks_us,ticks_diff # μtimeからsleep等を組み込む
 from math import log10                  # 対数変換用モジュールを組み込む
 
-freq = 40000                            # AD変換周波数(Hz)
+freq = 80000                            # AD変換周波数(Hz) 14kHzくらいまで
 window = 1024                           # 1回あたりの計測サンプル数
 display = 'AC'                          # メータ切り替え
 dispAcMaxMv = 1000                      # AC入力電圧(mV rms)
@@ -96,6 +96,7 @@ while True:                             # 繰り返し処理
     valAc = [0, 0]
     voltDc = [0.0, 0.0]
     voltAc = [0.0, 0.0]
+    time_start = ticks_us()
     for i in range(window):
         adc = adc0.read_u16()
         valSum[0] += adc
@@ -103,7 +104,8 @@ while True:                             # 繰り返し処理
         adc = adc1.read_u16()
         valSum[1] += adc
         vals[1].append(adc)             # ADCから値を取得して変数valに代入
-        sleep(sample_wait)              # 待ち時間処理
+        sleep(sample_wait)            # 待ち時間処理
+    freq_adc = round(1000 * window / ticks_diff(ticks_us(),time_start),1)
     peak_i += 1
     for ch in range(2):
         valDc[ch] = int(valSum[ch] / window + 0.5)
@@ -153,7 +155,7 @@ while True:                             # 繰り返し処理
                 if dispScale > 0 and i % dispScale == dispScale - 1:
                     text[i] += 0x04
             lcdPrint(ch, text)
-            print('Voltage AC =', voltAc[ch], 'Peak =', peakLv[ch], 'Level =', level)
+            print('Freq =', freq_adc, 'AC =', voltAc[ch], 'Peak =', peakLv[ch], 'Level =', level)
     led.duty_u16((valAc[0]+valAc[1])//2)                   # LEDを点灯する
 
 ###############################################################################
