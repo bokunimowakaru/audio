@@ -14,19 +14,16 @@ from machine import ADC,Pin,PWM,I2C     # ライブラリmachineのADC等を組�
 from utime import sleep,ticks_us,ticks_diff # μtimeからsleep等を組み込む
 from math import log10                  # 対数変換用モジュールを組み込む
 
-freq = 80000                            # AD変換周波数(Hz) 14kHzくらいまで
 window = 1024                           # 1回あたりの計測サンプル数
 display = 'AC'                          # メータ切り替え
 dispAcMaxMv = 1000                      # AC入力電圧(mV rms)
 dispAcRangeDb = 40                      # レベルメータ表示範囲(dB)
 dispScale = 4                           # 罫線のセル間隔(0～8,14,15)
 peakMode = 'voltage'                    # 電力尖頭値=power,電圧尖頭値=voltage
-sample_wait = 1 / freq                  # 計測周期(Sec.)
 
 # LED 初期化処理
 led = PWM(Pin(25, Pin.OUT))             # PWM出力用インスタンスledを生成
 led.freq(60)
-
 
 # ADC 初期化処理
 adc0 = ADC(0)                           # ADCポート0(Pin31)用adc0を生成
@@ -104,23 +101,22 @@ while True:                             # 繰り返し処理
         adc = adc1.read_u16()
         valSum[1] += adc
         vals[1].append(adc)             # ADCから値を取得して変数valに代入
-        sleep(sample_wait)            # 待ち時間処理
     freq_adc = round(1000 * window / ticks_diff(ticks_us(),time_start),1)
     peak_i += 1
     for ch in range(2):
         valDc[ch] = int(valSum[ch] / window + 0.5)
-        if peakMode == 'power':
+        if peakMode == 'power':                     # 尖頭電力メータ
             acSum = 0
-            for i in range(window):
+            for i in range(window):                 # 区間エネルギー計算
                 acSum += abs(vals[ch][i] - valDc[ch])
-            valAc[ch] = int(acSum / window + 0.5)
-        elif peakMode == 'voltage':
+            valAc[ch] = int(acSum / window + 0.5)   # サンプル数で除算しPowerに
+        elif peakMode == 'voltage':                 # 尖頭電圧メータ
             acVpp = 0
-            for i in range(window):
-                vpp = abs(vals[ch][i] - valDc[ch])
+            for i in range(window - 1): # ピーク演算（簡易ノイズフィルタ付）
+                vpp = abs(vals[ch][i] + vals[ch][i+1] - 2 * valDc[ch])
                 if vpp > acVpp:
                     acVpp = vpp
-            valAc[ch] = int(acVpp / 1.41421356 + 0.5)
+            valAc[ch] = int(acVpp / 2 / 1.41421356 + 0.5)
         voltDc[ch] = valDc[ch] * 3300 / 65535       # 直流分ADC値を電圧(mV)に変換
         voltAc[ch] = valAc[ch] * 3300 / 65535       # 交流分ADC値を電圧(mV)に変換
         if peak_i > 16:
@@ -155,7 +151,7 @@ while True:                             # 繰り返し処理
                 if dispScale > 0 and i % dispScale == dispScale - 1:
                     text[i] += 0x04
             lcdPrint(ch, text)
-            print('Freq =', freq_adc, 'AC =', voltAc[ch], 'Peak =', peakLv[ch], 'Level =', level)
+            print('Fs(kHz)='+str(freq_adc),'AC(mV)='+str(round(voltAc[ch])),'Peak(mV)='+str(round(peakLv[ch])),'Lv='+str(level))
     led.duty_u16((valAc[0]+valAc[1])//2)                   # LEDを点灯する
 
 ###############################################################################
