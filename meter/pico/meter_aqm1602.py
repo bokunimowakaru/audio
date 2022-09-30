@@ -17,9 +17,20 @@ from math import log10                  # 対数変換用モジュールを組�
 window = 1024                           # 1回あたりの計測サンプル数
 display = 'AC'                          # メータ切り替え
 dispAcMaxMv = 1000                      # AC入力電圧(mV rms)
-dispAcRangeDb = 32                      # レベルメータ表示範囲(dB)
-dispScale = 5                           # 罫線のセル間隔(0～8,14,15)
-peakMode = 'voltage'                    # 電力尖頭値=power,電圧尖頭値=voltage
+peakMode = 'vu'                    # 電力尖頭値=power,電圧尖頭値=voltage
+if peakMode == 'power':
+    dispAcRangeDb = 40                  # レベルメータ表示範囲(dB)
+    dispScale = 4                       # 罫線のセル間隔(0～8,14,15)
+elif peakMode == 'voltage':
+    dispAcRangeDb = 32                  # レベルメータ表示範囲(dB)
+    dispScale = 5                       # 罫線のセル間隔(0～8,14,15)
+elif peakMode == 'vu':
+    dispAcRangeDb = 24                  # レベルメータ表示範囲(dB)
+    dispScale = 0                       # 罫線のセル間隔(0～8,14,15)
+    window = 512                        # 1回あたりの計測サンプル数
+else:
+    dispAcRangeDb = 80                  # レベルメータ表示範囲(dB)
+    dispScale = 2                       # 罫線のセル間隔(0～8,14,15)
 
 # LED 初期化処理
 led = PWM(Pin(25, Pin.OUT))             # PWM出力用インスタンスledを生成
@@ -85,6 +96,7 @@ led.duty_u16(0x0000)
 peak_i = 0
 peakLv = [0, 0]
 peakDb = [0, 0]
+vu_filter = [[],[]]
 text = bytearray(16)
 while True:                             # 繰り返し処理
     vals = [[],[]]
@@ -101,7 +113,8 @@ while True:                             # 繰り返し処理
         adc = adc1.read_u16()
         valSum[1] += adc
         vals[1].append(adc)             # ADCから値を取得して変数valに代入
-    freq_adc = round(1000 * window / ticks_diff(ticks_us(),time_start),1)
+    ticks_adc = ticks_diff(ticks_us(),time_start) / 1000
+    freq_adc = round(window / ticks_adc,1)
     peak_i += 1
     for ch in range(2):
         valDc[ch] = int(valSum[ch] / window + 0.5)
@@ -117,6 +130,19 @@ while True:                             # 繰り返し処理
                 if vpp > acVpp:
                     acVpp = vpp
             valAc[ch] = int(acVpp / 2 / 1.41421356 + 0.5)
+        elif peakMode == 'vu':                      # VUメータ
+            acSum = 0
+            for i in range(window):                 # 区間エネルギー計算
+                acSum += abs(vals[ch][i] - valDc[ch])
+            vu_filter[ch].append(int(acSum / window + 0.5))
+            i_num = len(vu_filter[ch])
+            while i_num > 1 and i_num > int(200/ticks_adc):
+                del vu_filter[ch][0]
+                i_num -= 1
+            valAc[ch] = 0
+            for i in range(i_num):
+                valAc[ch] += vu_filter[ch][i]
+            valAc[ch] //= i_num
         voltDc[ch] = valDc[ch] * 3300 / 65535       # 直流分ADC値を電圧(mV)に変換
         voltAc[ch] = valAc[ch] * 3300 / 65535       # 交流分ADC値を電圧(mV)に変換
         if peak_i > 16:
