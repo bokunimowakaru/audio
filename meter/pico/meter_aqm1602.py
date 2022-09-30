@@ -17,8 +17,8 @@ from math import log10                  # 対数変換用モジュールを組�
 window = 1024                           # 1回あたりの計測サンプル数
 display = 'AC'                          # メータ切り替え
 dispAcMaxMv = 1000                      # AC入力電圧(mV rms)
-dispAcRangeDb = 40                      # レベルメータ表示範囲(dB)
-dispScale = 4                           # 罫線のセル間隔(0～8,14,15)
+dispAcRangeDb = 32                      # レベルメータ表示範囲(dB)
+dispScale = 5                           # 罫線のセル間隔(0～8,14,15)
 peakMode = 'voltage'                    # 電力尖頭値=power,電圧尖頭値=voltage
 
 # LED 初期化処理
@@ -36,24 +36,24 @@ lcd_vdd.value(0)                        # V+に0Vを出力
 sleep(0.5)                              # リセット・ホールド
 lcd_vdd.value(1)                        # V+用に3.3Vを出力
 sleep(0.2)                              # 起動待ち時間
-lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x39\x14\x73\x5E\x6C\x38\x0C')
+lcd_i2c.writeto_mem(aqm1602, 0x00, b'\x39\x14\x73\x5E\x6C\x38\x0C') # 参考文献1
 font_lv = [[
     b'\x00\x01\x00\x01\x00\x01\x00\x15',
     b'\x18\x19\x18\x19\x18\x19\x18\x15',
     b'\x1B\x1B\x1B\x1B\x1B\x1B\x1B\x15',
     b'\x03\x03\x03\x03\x03\x03\x03\x15'
 ],[
-    b'\x00\x01\x00\x01\x00\x01\x00\x01',
-    b'\x18\x19\x18\x19\x18\x19\x00\x01',
-    b'\x1B\x1B\x1B\x1B\x1B\x1B\x00\x01',
-    b'\x03\x03\x03\x03\x03\x03\x00\x01'
+    b'\x00\x10\x00\x10\x00\x10\x00\x10',
+    b'\x18\x18\x18\x18\x18\x18\x00\x10',
+    b'\x1B\x1B\x1B\x1B\x1B\x1B\x00\x10',
+    b'\x03\x13\x03\x13\x03\x13\x00\x10'
 ],[
-    b'\x01\x01\x00\x01\x01\x00\x01\x01',
-    b'\x19\x19\x18\x19\x19\x18\x01\x01',
-    b'\x1B\x1B\x1B\x1B\x1B\x1B\x01\x01',
-    b'\x03\x03\x03\x03\x03\x03\x01\x01'
-]]
-lcd_i2c.writeto_mem(aqm1602, 0x00, bytes([0x40])) # CGRAM address 0x00～0x02
+    b'\x10\x10\x00\x10\x10\x00\x10\x10',
+    b'\x18\x18\x18\x18\x18\x18\x10\x10',
+    b'\x1B\x1B\x1B\x1B\x1B\x1B\x10\x10',
+    b'\x13\x13\x03\x13\x13\x03\x10\x10'
+]]                                      # 参考文献3
+lcd_i2c.writeto_mem(aqm1602, 0x00, bytes([0x40])) # CGRAM address
 if dispScale == 0:                      # スケール表示なしの時
     for j in range(4):                  # LCD制御 フォント4文字の転送
         lcd_i2c.writeto_mem(aqm1602, 0x40, font_lv[0][j]) # フォント
@@ -140,7 +140,10 @@ while True:                             # 繰り返し処理
                     if i22 == level or i22 == peakDb[ch]:   # セルの右までの時
                         text[i] = 0x02          # セルの両側を点灯
                     else:                       # (セルの左までの時)
-                        text[i] = 0x01          # セルの左側を点灯
+                        if i==0 and peakDb[ch] == 0:
+                            text[i] = 0x00      # レベルなし
+                        else:
+                            text[i] = 0x01      # セルの左側を点灯
                 elif i > 0 and i == peakDb[ch] // 2: # ピーク単独表示位置の時
                     if i22 == peakDb[ch]:       # ピーク位置が右側のとき
                         text[i] = 0x03          # セルの右側のみ単独点灯
@@ -148,7 +151,7 @@ while True:                             # 繰り返し処理
                         text[i] = 0x01          # セルの左側を点灯
                 else:                           # 点灯条件に該当しないとき
                     text[i] = 0x00              # 非点灯表示
-                if dispScale > 0 and i % dispScale == dispScale - 1:
+                if dispScale > 0 and i % dispScale == 0 and text[i] < 0x04:
                     text[i] += 0x04
             lcdPrint(ch, text)
             print('Fs(kHz)='+str(freq_adc),'AC(mV)='+str(round(voltAc[ch])),'Peak(mV)='+str(round(peakLv[ch])),'Lv='+str(level))
