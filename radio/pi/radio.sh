@@ -79,7 +79,7 @@ done
 echo
 
 button
-while [ $? -eq 0 ]; then
+while [ $? -eq 0 ]; do
     echo `date` "configuring GPIO" >> $LOG 2>&1
     raspi-gpio set ${BUTTON_IO} pn >> $LOG 2>&1
     sleep 1
@@ -88,7 +88,7 @@ while [ $? -eq 0 ]; then
     echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction >> $LOG 2>&1
     sleep 1
     button
-fi
+done
 
 # ループ処理
 ch=1
