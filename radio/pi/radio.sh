@@ -9,6 +9,9 @@
 # 解説：
 #   実行するとインターネットラジオを再生します。
 #
+# 要件：
+#   sudo apt install raspi-gpio
+
 # 自動起動：
 #   /etc/rc.localに追加する場合
 #       su -l pi -s /bin/bash -c /home/pi/audio/pi/radio.sh &
@@ -18,14 +21,22 @@
 # 実行権限の付与が必要：
 #   chmod u+x /etc/rc.local
 #
-# ネットラジオ検索(参考文献)：
+# (参考文献)ネットラジオ検索：
 #   https://directory.shoutcast.com/
+#
+# (参考文献)GPIO用コマンド
+#   raspi-gpio help
 
 AUDIO_APP="ffplay"          # インストールした再生アプリ
 export SDL_AUDIODRIVER=alsa # オーディオ出力にALSAを使用する設定
-export AUDIODEV="hw:1,0"    # aplay -lで表示されたカード番号とサブデバイス番号を入力する
+export AUDIODEV="hw:0,0"    # aplay -lで表示されたカード番号とサブデバイス番号を入力する
 BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
+START_PRE=5                 # 開始待機時間(OS起動待ちなど)
 LOG="/dev/stdout"           # ログファイル名(/dev/stdoutで表示)
+
+if [ "$GPIO_LIB" = "RASPI" ]; then
+    sudo usermod -a -G gpio pi # GPIO使用権グループに追加 (LITE版が設定されていない)
+fi
 
 # インターネットラジオ局の登録
 urls=(
@@ -57,21 +68,21 @@ radio (){
     sleep 1
 }
 
-# ボタン状態を取得
+# ボタン状態を取得 (取得できないときは0,BUTTON_IO未設定時は1)
 button (){
     if [ $(($BUTTON_IO)) -le 0 ]; then
         return 1
     else
-        return $((`cat /sys/class/gpio/gpio${BUTTON_IO}/value`))
+        return $((`raspi-gpio get ${BUTTON_IO}|awk '{print $3}'|sed 's/level=//g'`))
+        # return $((`cat /sys/class/gpio/gpio${BUTTON_IO}/value`))
     fi
 }
 
 # 初期設定
 echo `date` "STARTED ---------------------" >> $LOG 2>&1
 /home/pi/audio/tools/olCheck.sh >> $LOG 2>&1
-pause=15
-echo "Please wait" $pause "seconds."    # OS起動待ち
-while [ $pause -gt 0 ]; do
+echo "Please wait" $START_PRE "seconds."    # OS起動待ち
+while [ $START_PRE -gt 0 ]; do
     sleep 1
     pause=$((pause -1))
     echo -n "."
@@ -81,12 +92,7 @@ echo
 button
 while [ $? -eq 0 ]; do
     echo `date` "configuring GPIO" >> $LOG 2>&1
-    raspi-gpio set ${BUTTON_IO} pn
-    sleep 1
-    echo ${BUTTON_IO} > /sys/class/gpio/export
-    sleep 3
-    echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction
-    echo $?
+    raspi-gpio set ${BUTTON_IO} ip pu
     sleep 1
     button
 done
@@ -98,14 +104,18 @@ while true; do
     button
     if [ $? -eq 0 ]; then
         echo `date` "button is pressed" >> $LOG 2>&1
-        sleep 3
+        kill `pidof ffplay`
+        sleep 1
         button
         if [ $? -eq 0 ]; then
-            date >> $LOG 2>&1
-            echo "shutdown -h now" >> $LOG 2>&1
-            kill `pidof ffplay`
-            # sudo shutdown -h now # 動作確認してから変更すること
-            exit 0
+            sleep 2
+            button
+            if [ $? -eq 0 ]; then
+                date >> $LOG 2>&1
+                echo "shutdown -h now" >> $LOG 2>&1
+                # sudo shutdown -h now # 動作確認してから変更すること
+                exit 0
+            fi
         fi
         ch=$((ch + 1))
         if [ $ch -gt $urln ]; then
@@ -113,6 +123,6 @@ while true; do
         fi
         radio $ch
     fi
-    sleep 0.1
+    sleep 0.05
 done
 exit
