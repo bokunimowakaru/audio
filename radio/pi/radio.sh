@@ -7,7 +7,12 @@
 #                                       Copyright (c) 2017 - 2022 Wataru KUNINO
 ################################################################################
 # 解説：
-#   /etc/rc.localへ下記を追加すると自動的に起動する
+#   実行するとインターネットラジオを再生します。
+#
+# 自動起動：
+#   /etc/rc.localに追加する場合
+#       su -l pi -s /bin/bash -c /home/pi/audio/pi/radio.sh &
+#   crontabに追加する場合
 #       /home/pi/audio/pi/radio.sh &
 #
 # 実行権限の付与が必要：
@@ -100,7 +105,7 @@ while true; do
             date >> $LOG 2>&1
             echo "shutdown -h now" >> $LOG 2>&1
             kill `pidof ffplay`
-            sudo shutdown -h now
+            # sudo shutdown -h now # 動作確認してから変更すること
             exit 0
         fi
         ch=$((ch + 1))
