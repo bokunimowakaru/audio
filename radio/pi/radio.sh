@@ -1,163 +1,112 @@
 #!/bin/bash
+################################################################################
+# インターネットラジオ (basicは基本機能のみ)
+#   radio.sh
+#   radio_basic.sh
 #
-# Apple Pi DEMO + インターネットラジオ
+#                                       Copyright (c) 2017 - 2022 Wataru KUNINO
+################################################################################
+# 解説：
+#   /etc/rc.localへ下記を追加すると自動的に起動する
+#       /home/pi/audio/pi/radio.sh &
 #
-# Copyright (c) 2017 - 2022 Wataru KUNINO
+# 実行権限の付与が必要：
+#   chmod u+x /etc/rc.local
 #
-# /etc/rc.localへ下記を追加すると自動的に起動する
-#       /home/pi/RaspberryPi/gpio/apple_pi_radio.sh &
-#
-# 実行権限の付与が必要
-# chmod u+x /etc/rc.local
-#
-# ネットラジオ検索
-# https://directory.shoutcast.com/
-#
-# NHK
-# https://www.nhk.or.jp/radio/config/config_web.xml
-#
-# 使用したチャンネル
-# https://www.181.fm/index.php?p=mp3links
-#	http://listen.livestreamingservice.com/181-power_64k.aac
-#	http://listen.livestreamingservice.com/181-powerexplicit_64k.aac
-#	http://listen.livestreamingservice.com/181-uktop40_64k.aac
-#	http://listen.livestreamingservice.com/181-beat_64k.aac
-# https://www.1.fm/stations
-#	http://185.33.21.111:80/atr_128
+# ネットラジオ検索(参考文献)：
+#   https://directory.shoutcast.com/
 
-export SDL_AUDIODRIVER=alsa
-export AUDIODEV=hw:1,0		# Apple PiのDACに合わせる
-RADIO=0
-LCD=0
-BME=""
-TARGET_SEC=$((SECONDS))
+AUDIO_APP="ffplay"          # インストールした再生アプリ
+export SDL_AUDIODRIVER=alsa # オーディオ出力にALSAを使用する設定
+export AUDIODEV="hw:1,0"    # aplay -lで表示されたカード番号とサブデバイス番号を入力する
+BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
+LOG="/dev/stdout"           # ログファイル名(/dev/stdoutで表示)
 
-#    0123456701234567
+# インターネットラジオ局の登録
 urls=(
-	"1:181.fmPower181 http://listen.livestreamingservice.com/181-power_64k.aac"
-	"2:181.fmUK_Top40 http://listen.livestreamingservice.com/181-uktop40_64k.aac"
-	"3:181.fmThe_Beat http://listen.livestreamingservice.com/181-beat_64k.aac"
-	"4:1.FM__AmTrance http://185.33.21.111:80/atr_128"
-	"5:NHK-FM(Osaka)_ https://radio-stream.nhk.jp/hls/live/2023509/nhkradirubkfm/master.m3u8"
-	"6:181.fmPow[Exp] http://listen.livestreamingservice.com/181-powerexplicit_64k.aac"
-	"7:181.fmEnergy93 http://listen.livestreamingservice.com/181-energy93_64k.aac"
-	"8:181.fmThe_Box_ http://listen.livestreamingservice.com/181-thebox_64k.aac"
-	"9:181.fmTranceJz http://listen.livestreamingservice.com/181-trancejazz_64k.aac"
-	"0:NHK-N1(Osaka)_ https://radio-stream.nhk.jp/hls/live/2023508/nhkradirubkr1/master.m3u8"
+    "1:181.fmPower181 http://listen.livestreamingservice.com/181-power_64k.aac"
+    "2:181.fmUK_Top40 http://listen.livestreamingservice.com/181-uktop40_64k.aac"
+    "3:181.fmThe_Beat http://listen.livestreamingservice.com/181-beat_64k.aac"
+    "4:1.FM__AmTrance http://185.33.21.111:80/atr_128"
+    "5:NHK-FM(Osaka)_ https://radio-stream.nhk.jp/hls/live/2023509/nhkradirubkfm/master.m3u8"
+    "6:181.fmPow[Exp] http://listen.livestreamingservice.com/181-powerexplicit_64k.aac"
+    "7:181.fmEnergy93 http://listen.livestreamingservice.com/181-energy93_64k.aac"
+    "8:181.fmThe_Box_ http://listen.livestreamingservice.com/181-thebox_64k.aac"
+    "9:181.fmTranceJz http://listen.livestreamingservice.com/181-trancejazz_64k.aac"
+    "0:NHK-N1(Osaka)_ https://radio-stream.nhk.jp/hls/live/2023508/nhkradirubkr1/master.m3u8"
 )
 urln=${#urls[*]}
 
-radio () {
-	if [ $1 -ge 1 ] && [ $1 -le $urln ]; then
-		ch=(${urls[$(($1 - 1))]})
-		/home/pi/RaspberryPi/gpio/raspi_gpo 6 1 >/dev/null
-		/home/pi/RaspberryPi/gpio/raspi_lcd -i "`echo ${ch[0]}| tr '_' ' '`"
-		/home/pi/RaspberryPi/gpio/raspi_gpo 6 0 >/dev/null
-		kill `pidof ffplay` &> /dev/null
-		/home/pi/RaspberryPi/gpio/raspi_gpo 5 1 >/dev/null
-		ffplay -nodisp ${ch[1]} &> /dev/null &
-	else
-		/home/pi/RaspberryPi/gpio/raspi_lcd -i "ERR num"
-	fi
-	sleep 1
+# ラジオ再生用の関数を定義
+radio (){
+    echo `date` "radio" $1 &>> $LOG
+    if [ $1 -ge 1 ] && [ $1 -le $urln ]; then
+        url_ch=(${urls[$(($1 - 1))]})
+        kill `pidof ffplay` &> /dev/null
+        if [ $AUDIO_APP = "ffplay" ]; then
+            ffplay -nodisp ${url_ch[1]} &> /dev/null &
+        fi
+    else
+        echo "ERROR ch" $1 &>> $LOG
+    fi
+    sleep 1
 }
 
-/home/pi/RaspberryPi/gpio/raspi_gpo 5 0 >/dev/null
-/home/pi/RaspberryPi/gpio/raspi_gpo 6 0 >/dev/null
-while true; do
-	IN1=`/home/pi/RaspberryPi/gpio/raspi_gpi 22 PUP`
-	IN2=`/home/pi/RaspberryPi/gpio/raspi_gpi 23 PUP`
-	IN3=`/home/pi/RaspberryPi/gpio/raspi_gpi 24 PUP`
-	IN4=`/home/pi/RaspberryPi/gpio/raspi_gpi 25 PUP`
-	IN5=`/home/pi/RaspberryPi/gpio/raspi_gpi 26 PUP`
-	IN6=`/home/pi/RaspberryPi/gpio/raspi_gpi 27 PUP`
+# ボタン状態を取得
+button (){
+    if [ $(($BUTTON_IO)) -le 0 ]; then
+        return 1
+    else
+        return $((`cat /sys/class/gpio/gpio${BUTTON_IO}/value`))
+    fi
+}
 
-	if [ "$IN1" = "0" ]; then  # 181.FM Power 181 (Top 40) の [Clean] と [Explicit] の切り替え
-		if [ $RADIO -eq 1 ]; then
-			RADIO=6
-		else
-			RADIO=1
-		fi
-		radio $RADIO
-	elif [ "$IN2" = "0" ]; then
-		if [ $RADIO -eq 2 ]; then
-			RADIO=7
-		else
-			RADIO=2
-		fi
-		radio $RADIO
-	elif [ "$IN3" = "0" ]; then
-		if [ $RADIO -eq 3 ]; then
-			RADIO=8
-		else
-			RADIO=3
-		fi
-		radio $RADIO
-	elif [ "$IN4" = "0" ]; then
-		if [ $RADIO -eq 4 ]; then
-			RADIO=9
-		else
-			RADIO=4
-		fi
-		radio $RADIO
-	elif [ "$IN5" = "0" ]; then
-		if [ $RADIO -eq 5 ]; then
-			RADIO=10
-		else
-			RADIO=5
-		fi
-		radio $RADIO
-	elif [ "$IN6" = "0" ]; then  # ボタン6 ラジオの停止  長押しでシャットダウン
-		if [ $RADIO -ne 0 ]; then
-			RADIO=0
-			kill `pidof ffplay` &> /dev/null
-			/home/pi/RaspberryPi/gpio/raspi_gpo 5 0 >/dev/null
-			# LCDに表示                             0123456701234567
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 1 >/dev/null
-			/home/pi/RaspberryPi/gpio/raspi_lcd -i "6:STOP  Hold=Off"
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 0 >/dev/null
-			sleep 1
-		else
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 1 >/dev/null
-			/home/pi/RaspberryPi/gpio/raspi_lcd -i "shuting down..."
-			sleep 3
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 0 >/dev/null
-			IN6=`/home/pi/RaspberryPi/gpio/raspi_gpi 27 PUP`
-			if [ "$IN6" = "0" ]; then
-				/home/pi/RaspberryPi/gpio/raspi_lcd -i "Bye."
-				sudo shutdown -h now
-				exit 0
-			fi
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 1 >/dev/null
-			/home/pi/RaspberryPi/gpio/raspi_lcd -i "Canceled"
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 0 >/dev/null
-		fi
-	fi
-
-	if [ $RADIO -eq 0 ] && [ $SECONDS -gt $TARGET_SEC ]; then
-		TARGET_SEC=$((SECONDS + 3))
-		if [ $LCD -eq 0 ]; then
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 1 >/dev/null
-			/home/pi/RaspberryPi/gpio/raspi_lcd -i "Apple PinetRadio"
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 0 >/dev/null
-			LCD=$(( LCD + 1 ))
-		elif [ $LCD -eq 1 ]; then
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 1 >/dev/null
-			/home/pi/RaspberryPi/gpio/raspi_lcd -i `hostname -I|cut -d" " -f1`
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 0 >/dev/null
-			LCD=$(( LCD + 1 ))
-			BME=`/home/pi/RaspberryPi/gpio/raspi_bme280`;export BME &
-		elif [ $LCD -eq 2 ]; then
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 1 >/dev/null
-			/home/pi/RaspberryPi/gpio/raspi_lcd -i "$BME"
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 0 >/dev/null
-			LCD=$(( LCD + 1 ))
-		elif [ $LCD -eq 3 ]; then
-			DATE=`date "+%y/%m/%d%R:%S"`
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 1 >/dev/null
-			/home/pi/RaspberryPi/gpio/raspi_lcd -i $DATE
-			/home/pi/RaspberryPi/gpio/raspi_gpo 6 0 >/dev/null
-			LCD=0
-		fi
-	fi
+# 初期設定
+echo `date` "STARTED ---------------------" &>> $LOG
+/home/pi/audio/tools/olCheck.sh &>> $LOG
+pause=15
+echo "Please wait" $pause "seconds."    # OS起動待ち
+while [ $pause -gt 0 ]; do
+    sleep 1
+    pause=$((pause -1))
+    echo -n "."
 done
+echo
+
+raspi-gpio set ${BUTTON_IO} pn &>> $LOG
+sleep 1
+echo ${BUTTON_IO} > /sys/class/gpio/export &>> $LOG
+sleep 3
+echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction &>> $LOG
+button
+while [ $? -eq 0 ]; do
+    echo `date` "waiting for your button release" &>> $LOG
+    sleep 5
+    button
+done
+
+# ループ処理
+ch=1
+radio $ch
+while true; do
+    button
+    if [ $? -eq 0 ]; then
+        echo `date` "button is pressed" &>> $LOG
+        sleep 3
+        button
+        if [ $? -eq 0 ]; then
+            date &>> $LOG
+            echo "shutdown -h now" &>> $LOG
+            kill `pidof ffplay`
+            sudo shutdown -h now
+            exit 0
+        fi
+        ch=$((ch + 1))
+        if [ $ch -gt $urln ]; then
+            ch=1
+        fi
+        radio $ch
+    fi
+    sleep 0.1
+done
+exit
