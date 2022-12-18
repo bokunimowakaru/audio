@@ -39,7 +39,7 @@ urln=${#urls[*]}
 
 # ラジオ再生用の関数を定義
 radio (){
-    echo `date` "radio" $1 &>> $LOG
+    echo `date` "radio" $1 >> $LOG 2>&1
     if [ $1 -ge 1 ] && [ $1 -le $urln ]; then
         url_ch=(${urls[$(($1 - 1))]})
         kill `pidof ffplay` &> /dev/null
@@ -47,7 +47,7 @@ radio (){
             ffplay -nodisp ${url_ch[1]} &> /dev/null &
         fi
     else
-        echo "ERROR ch" $1 &>> $LOG
+        echo "ERROR ch" $1 >> $LOG 2>&1
     fi
     sleep 1
 }
@@ -62,8 +62,8 @@ button (){
 }
 
 # 初期設定
-echo `date` "STARTED ---------------------" &>> $LOG
-/home/pi/audio/tools/olCheck.sh &>> $LOG
+echo `date` "STARTED ---------------------" >> $LOG 2>&1
+/home/pi/audio/tools/olCheck.sh >> $LOG 2>&1
 pause=15
 echo "Please wait" $pause "seconds."    # OS起動待ち
 while [ $pause -gt 0 ]; do
@@ -73,17 +73,19 @@ while [ $pause -gt 0 ]; do
 done
 echo
 
-raspi-gpio set ${BUTTON_IO} pn &>> $LOG
-sleep 1
-echo ${BUTTON_IO} > /sys/class/gpio/export &>> $LOG
-sleep 3
-echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction &>> $LOG
-button
-while [ $? -eq 0 ]; do
-    echo `date` "waiting for your button release" &>> $LOG
-    sleep 5
+if [ $(($BUTTON_IO)) -le 0 ]; then
+    raspi-gpio set ${BUTTON_IO} pn >> $LOG 2>&1
+    sleep 1
+    echo ${BUTTON_IO} > /sys/class/gpio/export >> $LOG 2>&1
+    sleep 3
+    echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction >> $LOG 2>&1
     button
-done
+    while [ $? -eq 0 ]; do
+        echo `date` "waiting for your button release" >> $LOG 2>&1
+        sleep 5
+        button
+    done
+fi
 
 # ループ処理
 ch=1
@@ -91,12 +93,12 @@ radio $ch
 while true; do
     button
     if [ $? -eq 0 ]; then
-        echo `date` "button is pressed" &>> $LOG
+        echo `date` "button is pressed" >> $LOG 2>&1
         sleep 3
         button
         if [ $? -eq 0 ]; then
-            date &>> $LOG
-            echo "shutdown -h now" &>> $LOG
+            date >> $LOG 2>&1
+            echo "shutdown -h now" >> $LOG 2>&1
             kill `pidof ffplay`
             sudo shutdown -h now
             exit 0

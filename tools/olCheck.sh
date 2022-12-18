@@ -27,6 +27,16 @@
 #   ./olCheck.sh off
 # 実行後にOSの再起動が必要
 
+BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
+if [ $(($BUTTON_IO)) -le 0 ]; then
+    raspi-gpio set ${BUTTON_IO} pn >> $LOG 2>&1
+    sleep 1
+    echo ${BUTTON_IO} > /sys/class/gpio/export >> $LOG 2>&1
+    sleep 3
+    echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction >> $LOG 2>&1
+    sleep 3
+fi
+
 name="olCheck.sh"
 if [ "$0" != "-bash" ]; then
 	name=${0}
