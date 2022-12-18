@@ -28,14 +28,6 @@
 # 実行後にOSの再起動が必要
 
 BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
-if [ $(($BUTTON_IO)) -le 0 ]; then
-    raspi-gpio set ${BUTTON_IO} pn >> $LOG 2>&1
-    sleep 1
-    echo ${BUTTON_IO} > /sys/class/gpio/export >> $LOG 2>&1
-    sleep 3
-    echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction >> $LOG 2>&1
-    sleep 3
-fi
 
 name="olCheck.sh"
 if [ "$0" != "-bash" ]; then
@@ -80,6 +72,14 @@ if [ "${1}" = "off" ]; then
 fi
 if [ "${1}" = "on" ]; then
 	echo
+	if [ $(($BUTTON_IO)) -le 0 ]; then
+		raspi-gpio set ${BUTTON_IO} pn >> $LOG 2>&1
+		sleep 1
+		echo ${BUTTON_IO} > /sys/class/gpio/export >> $LOG 2>&1
+		sleep 3
+		echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction >> $LOG 2>&1
+		sleep 3
+	fi
 	echo "Config is in progress. しばらくお待ちください"
 	sudo raspi-config nonint enable_overlayfs
 	echo -n "Overlay Mode = Lock"
@@ -87,7 +87,7 @@ if [ "${1}" = "on" ]; then
 fi
 
 if [ ${olfs} -ne ${olfs_new} ]; then
-	echo "; System Reboot Required!"
+	echo "; System Reboot Required! ラズベリーパイの再起動を行います"
 	echo -n "> sudo reboot"
 fi
 
