@@ -84,7 +84,7 @@ echo `date` "STARTED ---------------------" >> $LOG 2>&1
 echo "Please wait" $START_PRE "seconds."    # OS起動待ち
 while [ $START_PRE -gt 0 ]; do
     sleep 1
-    pause=$((pause -1))
+    START_PRE=$((START_PRE -1))
     echo -n "."
 done
 echo
