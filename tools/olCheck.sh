@@ -73,6 +73,7 @@ fi
 if [ "${1}" = "on" ]; then
 	echo
 	if [ $(($BUTTON_IO)) -gt 0 ]; then
+		echo "GPIO Configuring. しばらくお待ちください(10秒)"
 		raspi-gpio set ${BUTTON_IO} pn
 		sleep 1
 		echo ${BUTTON_IO} > /sys/class/gpio/export
@@ -80,14 +81,14 @@ if [ "${1}" = "on" ]; then
 		echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction
 		sleep 3
 	fi
-	echo "Config is in progress. しばらくお待ちください"
+	echo "Overlay FS Configuring. しばらくお待ちください(数分)"
 	sudo raspi-config nonint enable_overlayfs
 	echo -n "Overlay Mode = Lock"
 	olfs_new=1
 fi
 
 if [ ${olfs} -ne ${olfs_new} ]; then
-	echo "; System Reboot Required! ラズベリーパイの再起動を行います"
+	echo "; System Reboot Required! 下記のコマンドで再起動を行ってください"
 	echo -n "> sudo reboot"
 fi
 
