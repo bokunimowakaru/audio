@@ -81,11 +81,12 @@ echo
 button
 while [ $? -eq 0 ]; do
     echo `date` "configuring GPIO" >> $LOG 2>&1
-    raspi-gpio set ${BUTTON_IO} pn >> $LOG 2>&1
+    raspi-gpio set ${BUTTON_IO} pn
     sleep 1
-    echo ${BUTTON_IO} > /sys/class/gpio/export >> $LOG 2>&1
+    echo ${BUTTON_IO} > /sys/class/gpio/export
     sleep 3
-    echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction >> $LOG 2>&1
+    echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction
+    echo $?
     sleep 1
     button
 done
