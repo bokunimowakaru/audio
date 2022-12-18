@@ -28,8 +28,6 @@
 #   ./olCheck.sh off
 # 実行後にOSの再起動が必要
 
-BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
-
 name="olCheck.sh"
 if [ "$0" != "-bash" ]; then
 	name=${0}
@@ -73,15 +71,6 @@ if [ "${1}" = "off" ]; then
 fi
 if [ "${1}" = "on" ]; then
 	echo
-	if [ $(($BUTTON_IO)) -gt 0 ]; then
-		echo "GPIO Configuring. しばらくお待ちください(10秒)"
-		raspi-gpio set ${BUTTON_IO} pn
-		sleep 1
-		echo ${BUTTON_IO} > /sys/class/gpio/export
-		sleep 3
-		echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction
-		sleep 3
-	fi
 	echo "Overlay FS Configuring. しばらくお待ちください(数分)"
 	sudo raspi-config nonint enable_overlayfs
 	echo -n "Overlay Mode = Lock"
