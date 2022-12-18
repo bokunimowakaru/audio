@@ -78,18 +78,16 @@ while [ $pause -gt 0 ]; do
 done
 echo
 
-if [ $(($BUTTON_IO)) -gt 0 ]; then
+button
+while [ $? -eq 0 ]; then
+    echo `date` "configuring GPIO" >> $LOG 2>&1
     raspi-gpio set ${BUTTON_IO} pn >> $LOG 2>&1
     sleep 1
-    echo ${BUTTON_IO} > /sys/class/gpio/export &>> $LOG
+    echo ${BUTTON_IO} > /sys/class/gpio/export >> $LOG 2>&1
     sleep 3
-    echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction &>> $LOG
+    echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction >> $LOG 2>&1
+    sleep 1
     button
-    while [ $? -eq 0 ]; do
-        echo `date` "waiting for your button release" >> $LOG 2>&1
-        sleep 5
-        button
-    done
 fi
 
 # ループ処理
