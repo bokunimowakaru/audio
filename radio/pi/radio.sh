@@ -14,9 +14,9 @@
 
 # 自動起動：
 #   /etc/rc.localに追加する場合
-#       su -l pi -s /bin/bash -c /home/pi/audio/pi/radio.sh &
+#       su -l pi -s /bin/bash -c /home/pi/audio/radio/pi/radio.sh &
 #   crontabに追加する場合
-#       /home/pi/audio/pi/radio.sh &
+#       /home/pi/audio/radio/pi/radio.sh &
 #
 # 実行権限の付与が必要：
 #   chmod u+x /etc/rc.local
