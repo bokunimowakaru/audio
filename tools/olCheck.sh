@@ -72,12 +72,12 @@ if [ "${1}" = "off" ]; then
 fi
 if [ "${1}" = "on" ]; then
 	echo
-	if [ $(($BUTTON_IO)) -le 0 ]; then
-		raspi-gpio set ${BUTTON_IO} pn >> $LOG 2>&1
+	if [ $(($BUTTON_IO)) -gt 0 ]; then
+		raspi-gpio set ${BUTTON_IO} pn
 		sleep 1
-		echo ${BUTTON_IO} > /sys/class/gpio/export >> $LOG 2>&1
+		echo ${BUTTON_IO} > /sys/class/gpio/export
 		sleep 3
-		echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction >> $LOG 2>&1
+		echo in > /sys/class/gpio/gpio${BUTTON_IO}/direction
 		sleep 3
 	fi
 	echo "Config is in progress. しばらくお待ちください"

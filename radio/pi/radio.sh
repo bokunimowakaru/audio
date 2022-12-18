@@ -73,7 +73,7 @@ while [ $pause -gt 0 ]; do
 done
 echo
 
-if [ $(($BUTTON_IO)) -le 0 ]; then
+if [ $(($BUTTON_IO)) -gt 0 ]; then
     raspi-gpio set ${BUTTON_IO} pn >> $LOG 2>&1
     sleep 1
     echo ${BUTTON_IO} > /sys/class/gpio/export >> $LOG 2>&1
