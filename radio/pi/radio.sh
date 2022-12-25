@@ -31,7 +31,7 @@ AUDIO_APP="ffplay"          # インストールした再生アプリ
 export SDL_AUDIODRIVER=alsa # オーディオ出力にALSAを使用する設定
 export AUDIODEV="hw:0,0"    # aplay -lで表示されたカード番号とサブデバイス番号を入力する
 BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
-START_PRE=5                 # 開始待機時間(OS起動待ちなど)
+START_PRE=15                # 開始待機時間(OS起動待ちなど)
 LOG="/dev/stdout"           # ログファイル名(/dev/stdoutで表示)
 
 if [ "$GPIO_LIB" = "RASPI" ]; then
