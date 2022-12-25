@@ -10,7 +10,8 @@ I2C接続の小型液晶に文字を表示する
   -i		I2C通信のエラーを無視する
   -f		標準入力から待ち受けを行う（終了しない）
   -rPORT	液晶のリセット信号用GPIOポート番号
-  
+  -wWIDTH	液晶の表示桁数8または16
+  -yROW		表示行1または2
 										Copyright (c) 2014-2017 Wataru KUNINO
 										https://bokunimo.net/raspi/
 ********************************************************************************
@@ -29,6 +30,8 @@ typedef unsigned char byte;
 extern int ERROR_CHECK;				// オプション -i
 int LOOP=0;							// オプション -f
 int PORT=-1;						// オプション -rPORT
+int WIDTH=8;						// オプション -wWIDTH
+int ROW=0;							// オプション -yROW
 
 int main(int argc,char **argv){
 	int num=1; char s[49]; s[0]='\0';
@@ -43,6 +46,24 @@ int main(int argc,char **argv){
 			}
 			printf("reset (%d)\n",PORT);
 			i2c_hard_reset(PORT);
+		}
+		if(argv[num][1]=='w'){
+			WIDTH=atoi(&argv[num][2]);
+			if( WIDTH == 0 && argc > num+1 ){
+				num++;
+				WIDTH = atoi(argv[num]);
+			}
+			if( WIDTH != 8 && WIDTH != 16 && WIDTH != 20 ) WIDTH=8;
+			printf("LCD Width (%d)\n",WIDTH);
+		}
+		if(argv[num][1]=='y'){
+			ROW=atoi(&argv[num][2]) - 1;
+			if( ROW < 0 && argc > num+1 ){
+				num++;
+				ROW = atoi(argv[num]) - 1;
+			}
+			if(ROW != 0 && ROW != 1) ROW = 0;
+			printf("LCD Y (%d)\n",ROW + 1);
 		}
 		num++;
 	}
@@ -61,13 +82,22 @@ int main(int argc,char **argv){
 		fprintf(stderr,"I2C ERROR in INIT\n");
 		if( ERROR_CHECK ) return 1;
 	}
-	if( !i2c_lcd_init() ){
-		fprintf(stderr,"I2C ERROR in LCD_INIT\n");
-		if( ERROR_CHECK ) return 2;
-	}
-	if( !i2c_lcd_print(s) ){
-		fprintf(stderr,"I2C ERROR in LCD_PRINT\n");
-		if( ERROR_CHECK ) return 3;
+//	if( !i2c_lcd_init() ){
+	if( !ROW ){
+		if( !i2c_lcd_init_xy(WIDTH,2) ){
+			fprintf(stderr,"I2C ERROR in LCD_INIT\n");
+			if( ERROR_CHECK ) return 2;
+		}
+		if( !i2c_lcd_print(s) ){
+			fprintf(stderr,"I2C ERROR in LCD_PRINT\n");
+			if( ERROR_CHECK ) return 3;
+		}
+	}else{
+		i2c_lcd_set_xy(WIDTH,2);
+		if( !i2c_lcd_print2(s) ){
+			fprintf(stderr,"I2C ERROR in LCD_PRINT\n");
+			if( ERROR_CHECK ) return 3;
+		}
 	}
 	while(LOOP && !feof(stdin) ){
 		fgets(s,sizeof(s),stdin);

@@ -615,6 +615,11 @@ byte i2c_lcd_init_xy(byte x, byte y){
 	return i2c_lcd_init();
 }
 
+void i2c_lcd_set_xy(byte x, byte y){
+	if(x==16||x==8||x==20) _lcd_size_x=x;
+	if(y==1 ||y==2) _lcd_size_y=y;
+}
+
 byte i2c_lcd_print(char *s){
 // 戻り値：０の時はエラー
 	byte i,j;

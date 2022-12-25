@@ -41,6 +41,7 @@ byte i2c_lcd_out(byte y,byte *lcd);
 void utf_del_uni(char *s);
 byte i2c_lcd_init(void);
 byte i2c_lcd_init_xy(byte x, byte y);
+void i2c_lcd_set_xy(byte x, byte y);
 byte i2c_lcd_print(char *s);
 byte i2c_lcd_print2(char *s);
 byte i2c_lcd_print_ip(uint32_t ip);
