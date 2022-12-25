@@ -113,7 +113,7 @@ while true; do
             if [ $? -eq 0 ]; then
                 date >> $LOG 2>&1
                 echo "shutdown -h now" >> $LOG 2>&1
-                # sudo shutdown -h now # 動作確認してから変更すること
+                sudo shutdown -h now # 動作確認してから変更すること
                 exit 0
             fi
         fi
