@@ -9,9 +9,24 @@
 # 解説：
 #   実行するとインターネットラジオを再生します。
 #
+# 詳細：
+#   https://bokunimo.net/blog/raspberry-pi/3123/
+#
 # 要件：
-#   sudo apt install raspi-gpio
-
+#
+# 本ソフトのインストール：
+#   $ sudo apt install raspi-gpio (LITE版)
+#   $ sudo apt install alsa-utils (LITE版)
+#   $ sudo apt install ffmpeg
+#   $ sudo apt install git (LITE版)
+#   $ git clone https://bokunimo.net/git/audio ⏎
+#   $ cd audio/radio/pi ⏎
+#   $ make ⏎
+#   $ ./radio.sh ⏎
+#   (音が出ないときは、下記のカード番号、デバイス番号を変更して再実行)
+#   $ vi audio/radio/pi/radio.sh ⏎
+#       export AUDIODEV="hw:1,0"
+#
 # 自動起動：
 #   /etc/rc.localに追加する場合
 #       su -l pi -s /bin/bash -c /home/pi/audio/radio/pi/radio.sh &
@@ -27,17 +42,28 @@
 # (参考文献)GPIO用コマンド
 #   raspi-gpio help
 
-AUDIO_APP="ffplay"          # インストールした再生アプリ
-LCD_APP="/home/pi/audio/radio/pi/raspi_lcd" # LCD表示用。※要makeの実行
 export SDL_AUDIODRIVER=alsa # オーディオ出力にALSAを使用する設定
 export AUDIODEV="hw:0,0"    # aplay -lで表示されたカード番号とサブデバイス番号を入力する
+FILEPATH="/home/pi/Music"   # MusicBox用のファイルパス
+TEMP_DIR="/radio_sh_tmp"    # MusicBox用のファイルパス
 BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
+BUTTON_MODE_IO="22"         # モード切替ボタン(使用しないときは0)
 START_PRE=15                # 開始待機時間(OS起動待ちなど)
-LOG="/dev/stdout"           # ログファイル名(/dev/stdoutで表示)
+
+AUDIO_APP="ffplay"                          # インストールした再生アプリ
+LCD_APP="/home/pi/audio/radio/pi/raspi_lcd" # LCD表示用。※要makeの実行
+LOG="/dev/stdout"                           # ログファイル名(/dev/stdoutで表示)
 
 if [ "$GPIO_LIB" = "RASPI" ]; then
     sudo usermod -a -G gpio pi # GPIO使用権グループに追加 (LITE版が設定されていない)
 fi
+
+# 再生モード
+modes=(
+    "InternetRadio"
+    "MusicBox"
+)
+moden=${#modes[*]}
 
 # インターネットラジオ局の登録
 urls=(
@@ -53,7 +79,6 @@ urls=(
     "NHK-N1__(Osaka)_ https://radio-stream.nhk.jp/hls/live/2023508/nhkradirubkr1/master.m3u8"
 )
 urln=${#urls[*]}
-
 
 # LCD表示用
 lcd (){
@@ -74,7 +99,7 @@ lcd (){
             $LCD_APP -i -w16 -y2 ${s2} > /dev/null 2>&1
         fi
     fi
-    echo `date` "LCD" ${s1} ${s2}
+    echo `date` "LCD" ${s1} ${s2} >> $LOG 2>&1
 }
 
 # ラジオ再生用の関数を定義
@@ -88,9 +113,39 @@ radio (){
             ffplay -nodisp ${url_ch[1]} &> /dev/null &
         fi
     else
-        echo "ERROR ch" $1 >> $LOG 2>&1
+        echo "ERROR radio ch" $1 >> $LOG 2>&1
     fi
-    sleep 1
+    sleep 0.3
+}
+
+music_box (){
+    echo `date` "music_box" $1 >> $LOG 2>&1
+    if [ $1 -ge 1 ] && [ $1 -le $file_max ]; then
+        lcd "MusicBox_File"${1}
+        kill `pidof ffplay` &> /dev/null
+        if [ $AUDIO_APP = "ffplay" ]; then
+            ffplay -nodisp -autoexit ${FILEPATH}${TEMP_DIR}/${filen}.lnk &> /dev/null &
+        fi
+    else
+        echo "ERROR music_box ch" $1 >> $LOG 2>&1
+    fi
+    sleep 0.3
+}
+
+play (){
+    if [ $mode -eq 1 ]; then
+        ch=$((ch + $1))
+        if [ $ch -gt $urln ]; then
+            ch=1
+        fi
+        radio $ch
+    elif [ $mode -eq 2 ]; then
+        filen=$((filen + $1))
+        if [ $filen -gt $file_max ]; then
+            filen=1
+        fi
+        music_box $filen
+    fi
 }
 
 # ボタン状態を取得 (取得できないときは0,BUTTON_IO未設定時は1)
@@ -103,11 +158,36 @@ button (){
     fi
 }
 
+button_mode (){
+    if [ $(($BUTTON_MODE_IO)) -le 0 ]; then
+        return 1
+    else
+        return $((`raspi-gpio get ${BUTTON_MODE_IO}|awk '{print $3}'|sed 's/level=//g'`))
+    fi
+}
+
+
 # 初期設定
 echo `date` "STARTED ---------------------" >> $LOG 2>&1
-lcd
-/home/pi/audio/tools/olCheck.sh >> $LOG 2>&1
-echo "Please wait" $START_PRE "seconds."    # OS起動待ち
+lcd >> $LOG 2>&1
+echo -n `date`" " >> $LOG 2>&1
+/home/pi/audio/tools/olCheck.sh|tr "\n" " " >> $LOG 2>&1
+echo >> $LOG 2>&1
+
+# MusicBox用 ファイル用リンク作成
+mkdir -p ${FILEPATH}${TEMP_DIR}
+rm -f ${FILEPATH}${TEMP_DIR}/*
+i=1
+ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 2> /dev/null | while read filename; do
+    ext=`echo ${filename}|rev|cut -d'.' -f1|rev`
+    ln -s "${filename}" "${FILEPATH}${TEMP_DIR}/${i}.lnk"
+    i=$(( i + 1 ))
+done
+file_max=$((`ls -t ${FILEPATH}${TEMP_DIR}|head -1|cut -d"." -f1`))
+echo `date` "MusicBox:" ${file_max} "files" >> $LOG 2>&1
+
+# OS起動待ち
+echo -n `date` "Please wait" $START_PRE "seconds."
 while [ $START_PRE -gt 0 ]; do
     sleep 1
     START_PRE=$((START_PRE -1))
@@ -115,6 +195,7 @@ while [ $START_PRE -gt 0 ]; do
 done
 echo
 
+# ボタン入力用GPIO設定
 button
 while [ $? -eq 0 ]; do
     echo `date` "configuring GPIO" >> $LOG 2>&1
@@ -123,15 +204,40 @@ while [ $? -eq 0 ]; do
     button
 done
 
+button_mode
+while [ $? -eq 0 ]; do
+    echo `date` "configuring GPIO" >> $LOG 2>&1
+    raspi-gpio set ${BUTTON_MODE_IO} ip pu
+    sleep 1
+    button_mode
+done
+
 # ループ処理
 ch=1
-radio $ch
+filen=1
+mode=1
+play 0
 while true; do
+    pidof ffplay > /dev/null
+    if [ $? -ne 0 ]; then
+        echo `date` "[pidof] detected no music" >> $LOG 2>&1
+        play 1
+    fi
+    button_mode
+    if [ $? -eq 0 ]; then
+        echo `date` "[mode] button is pressed" >> $LOG 2>&1
+        mode=$((mode + 1))
+        if [ $mode -gt $moden ]; then
+            mode=1
+        fi
+        play 0
+        sleep 0.3
+    fi
     button
     if [ $? -eq 0 ]; then
-        echo `date` "button is pressed" >> $LOG 2>&1
+        echo `date` "[next] button is pressed" >> $LOG 2>&1
         kill `pidof ffplay`
-        sleep 1
+        sleep 0.3
         button
         if [ $? -eq 0 ]; then
             sleep 2
@@ -143,11 +249,7 @@ while true; do
                 exit 0
             fi
         fi
-        ch=$((ch + 1))
-        if [ $ch -gt $urln ]; then
-            ch=1
-        fi
-        radio $ch
+        play 1
     fi
     sleep 0.05
 done
