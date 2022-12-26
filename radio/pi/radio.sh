@@ -80,6 +80,10 @@ urls=(
 )
 urln=${#urls[*]}
 
+date (){
+    /usr/bin/date +"%Y/%m/%d %I:%M:%S"
+}
+
 # LCD表示用
 lcd (){
     s1="Radio Musicﾌﾟﾚｲﾔ"
