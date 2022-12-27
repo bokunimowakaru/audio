@@ -250,9 +250,11 @@ while true; do
         sleep 0.3
         button
         if [ $? -eq 0 ]; then
+            lcd "ﾎﾞﾀﾝ ｦ ｵｼﾂﾂﾞｹﾙﾄ" "ｼｬｯﾄﾀﾞｳﾝ ｼﾏｽ"
             sleep 2
             button
             if [ $? -eq 0 ]; then
+                lcd "Shuting down..." "Please wait"
                 date >> $LOG 2>&1
                 echo "shutdown -h now" >> $LOG 2>&1
                 sudo shutdown -h now # 動作確認してから変更すること
