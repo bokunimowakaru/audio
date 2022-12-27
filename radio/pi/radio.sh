@@ -48,6 +48,7 @@ FILEPATH="/home/pi/Music"   # MusicBox用のファイルパス
 TEMP_DIR="/radio_sh_tmp"    # MusicBox用のファイルパス
 BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
 BUTTON_MODE_IO="22"         # モード切替ボタン(使用しないときは0)
+LCD_IO="16"                 # LCD用電源用IOポート番号を指定する(使用しないときは0)
 START_PRE=15                # 開始待機時間(OS起動待ちなど)
 
 AUDIO_APP="ffplay"                          # インストールした再生アプリ
@@ -173,6 +174,11 @@ button_mode (){
 
 # 初期設定
 echo `date` "STARTED ---------------------" >> $LOG 2>&1
+if [ ${LCD_IO} -ge 0 ]; then
+    raspi-gpio set ${LCD_IO} op pn dl
+    sleep 0.04
+    raspi-gpio set ${LCD_IO} dh
+fi
 lcd >> $LOG 2>&1
 echo -n `date`" " >> $LOG 2>&1
 /home/pi/audio/tools/olCheck.sh|tr "\n" " " >> $LOG 2>&1
