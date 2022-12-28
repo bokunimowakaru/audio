@@ -85,6 +85,19 @@ date (){
     /usr/bin/date +"%Y/%m/%d %I:%M:%S"
 }
 
+# LCD初期化用
+lcd_reset (){
+    echo `date` "LCD reset GPIO"${LCD_IO} >> $LOG 2>&1
+    if [ ${LCD_IO} -ge 0 ]; then
+        raspi-gpio set 3 ip pu              # PORT_SCL
+        raspi-gpio set 2 ip pu              # PORT_SDA
+        raspi-gpio set ${LCD_IO} op pn dl   # RESET and VDD
+        sleep 0.1                           #sleep 0.04
+        raspi-gpio set ${LCD_IO} dh
+    fi
+    sleep 0.1
+}
+
 # LCD表示用
 lcd (){
     s1="Radio Musicﾌﾟﾚｲﾔ"
@@ -174,11 +187,7 @@ button_mode (){
 
 # 初期設定
 echo `date` "STARTED ---------------------" >> $LOG 2>&1
-if [ ${LCD_IO} -ge 0 ]; then
-    raspi-gpio set ${LCD_IO} op pn dl
-    sleep 0.04
-    raspi-gpio set ${LCD_IO} dh
-fi
+lcd_reset >> $LOG 2>&1
 lcd >> $LOG 2>&1
 echo -n `date`" " >> $LOG 2>&1
 /home/pi/audio/tools/olCheck.sh|tr "\n" " " >> $LOG 2>&1
@@ -226,6 +235,7 @@ done
 ch=1
 filen=1
 mode=1
+lcd_reset >> $LOG 2>&1
 play 0
 while true; do
     pidof ffplay > /dev/null
@@ -238,6 +248,7 @@ while true; do
         echo `date` "[mode] button is pressed" >> $LOG 2>&1
         mode=$((mode + 1))
         if [ $mode -gt $moden ]; then
+            lcd_reset >> $LOG 2>&1
             mode=1
         fi
         play 0
