@@ -31,7 +31,7 @@
 #   /etc/rc.localに追加する場合
 #       su -l pi -s /bin/bash -c /home/pi/audio/radio/pi/radio.sh &
 #   crontabに追加する場合
-#       /home/pi/audio/radio/pi/radio.sh &
+#       @reboot /home/pi/audio/radio/pi/radio.sh &
 #
 # 実行権限の付与が必要：
 #   chmod u+x /etc/rc.local
@@ -49,11 +49,11 @@ TEMP_DIR="/radio_sh_tmp"    # MusicBox用のファイルパス
 BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
 BUTTON_MODE_IO="22"         # モード切替ボタン(使用しないときは0)
 LCD_IO="16"                 # LCD用電源用IOポート番号を指定する(使用しないときは0)
-START_PRE=15                # 開始待機時間(OS起動待ちなど)
+START_PRE=10                # 開始待機時間(OS起動待ち・インターネット接続待ち時間)
 
 AUDIO_APP="ffplay"                          # インストールした再生アプリ
 LCD_APP="/home/pi/audio/radio/pi/raspi_lcd" # LCD表示用。※要makeの実行
-LOG="/dev/stdout"                           # ログファイル名(/dev/stdoutで表示)
+LOG="/home/pi/audio/radio/pi/radio.log"     # ログファイル名(/dev/stdoutでコンソール表示)
 
 if [ "$GPIO_LIB" = "RASPI" ]; then
     sudo usermod -a -G gpio pi # GPIO使用権グループに追加 (LITE版が設定されていない)
@@ -71,12 +71,12 @@ urls=(
     "181.fm__Power181 http://listen.livestreamingservice.com/181-power_64k.aac"
     "181.fm__UK_Top40 http://listen.livestreamingservice.com/181-uktop40_64k.aac"
     "181.fm__The_Beat http://listen.livestreamingservice.com/181-beat_64k.aac"
-    "1.FM____AmTrance http://185.33.21.111:80/atr_128"
+    "1.FM_AmsteTrance http://185.33.21.111:80/atr_128"
     "NHK-FM__(Osaka)_ https://radio-stream.nhk.jp/hls/live/2023509/nhkradirubkfm/master.m3u8"
     "181.fm__Pow[Exp] http://listen.livestreamingservice.com/181-powerexplicit_64k.aac"
     "181.fm__Energy93 http://listen.livestreamingservice.com/181-energy93_64k.aac"
     "181.fm__The_Box_ http://listen.livestreamingservice.com/181-thebox_64k.aac"
-    "181.fm__TranceJz http://listen.livestreamingservice.com/181-trancejazz_64k.aac"
+    "181.fm_TranceJaz http://listen.livestreamingservice.com/181-trancejazz_64k.aac"
     "NHK-N1__(Osaka)_ https://radio-stream.nhk.jp/hls/live/2023508/nhkradirubkr1/master.m3u8"
 )
 urln=${#urls[*]}
@@ -87,14 +87,21 @@ date (){
 
 # LCD初期化用
 lcd_reset (){
-    echo `date` "LCD reset GPIO"${LCD_IO} >> $LOG 2>&1
+    echo -n `date` "LCD reset GPIO"${LCD_IO} >> $LOG 2>&1
     if [ ${LCD_IO} -ge 0 ]; then
-        raspi-gpio set 3 ip pu              # PORT_SCL
-        raspi-gpio set 2 ip pu              # PORT_SDA
-        raspi-gpio set ${LCD_IO} op pn dl   # RESET and VDD
-        sleep 0.1                           #sleep 0.04
-        raspi-gpio set ${LCD_IO} dh
+        # raspi-gpio set 3 ip pu                # PORT_SCL
+        # raspi-gpio set 2 ip pu                # PORT_SDA
+        while [ "`raspi-gpio get ${LCD_IO}|awk '{print $5}'|sed 's/func=//g'`" = "INPUT" ]; do
+            # GPIOの出力設定が効かないことがあるので whileで出力に切り替わるまで繰り返す
+            raspi-gpio set ${LCD_IO} op pn dl   # ouput
+            sleep 1
+            echo -n "." >> $LOG 2>&1
+        done
+        raspi-gpio set ${LCD_IO} dl # RESET and VDD OFF
+        sleep 0.2                   # 電源を落ち切らせるために延長(本来はsleep 0.04 )
+        raspi-gpio set ${LCD_IO} dh # 電源ON
     fi
+    echo >> $LOG 2>&1
     sleep 0.1
 }
 
@@ -205,7 +212,7 @@ done
 file_max=$((`ls -t ${FILEPATH}${TEMP_DIR}|head -1|cut -d"." -f1`))
 echo `date` "MusicBox:" ${file_max} "files" >> $LOG 2>&1
 
-# OS起動待ち
+# OS起動・インターネット接続待ち
 echo -n `date` "Please wait" $START_PRE "seconds."
 while [ $START_PRE -gt 0 ]; do
     sleep 1
@@ -231,12 +238,14 @@ while [ $? -eq 0 ]; do
     button_mode
 done
 
-# ループ処理
+# メイン処理
 ch=1
 filen=1
 mode=1
 lcd_reset >> $LOG 2>&1
 play 0
+sleep 5  # 初回再生時のインターネット接続待ち時間
+# ループ処理
 while true; do
     pidof ffplay > /dev/null
     if [ $? -ne 0 ]; then
