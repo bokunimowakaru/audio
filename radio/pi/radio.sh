@@ -107,7 +107,7 @@ lcd_reset (){
 
 # LCD表示用
 lcd (){
-    s1="Radio Musicﾌﾟﾚｲﾔ"
+    s1="Radio&Musicﾌﾟﾚｲﾔ"
     s2="by ﾎﾞｸﾆﾓﾜｶﾙRasPi"
     #   0123456789012345
     if [ "$#" -ge 1 ] && [ -n "$1" ]; then
