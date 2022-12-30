@@ -88,7 +88,7 @@ urls=(
 urln=${#urls[*]}
 
 date (){
-    /usr/bin/date +"%Y/%m/%d %I:%M:%S"
+    /usr/bin/date +"%Y/%m/%d %H:%M:%S"
 }
 
 # LCD初期化用
