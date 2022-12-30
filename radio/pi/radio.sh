@@ -157,10 +157,10 @@ music_box (){
     if [ $1 -ge 1 ] && [ $1 -le $file_max ]; then
         lcd_s1=`grep -i artist "${FILEPATH}${TEMP_DIR}/${filen}.txt"|cut -d"=" -f2|head -1`
         lcd_s2=`grep -i title "${FILEPATH}${TEMP_DIR}/${filen}.txt"|cut -d"=" -f2|head -1`
-        if [ -z ${lcd_s1} ]; then
+        if [ -z "${lcd_s1}" ]; then
             lcd_s1="MusicBox_File"${1}
         fi
-        if [ -z ${lcd_s2} ]; then
+        if [ -z "${lcd_s2}" ]; then
             lcd_s2="no title"
         fi
         lcd "${lcd_s1}" "${lcd_s2}"
