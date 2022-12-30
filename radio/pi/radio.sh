@@ -132,7 +132,7 @@ lcd (){
             $LCD_APP -i -w16 -r${LCD_IO} -y1 ${s1} > /dev/null 2>&1
         fi
     fi
-    echo `date` "LCD" ${s1} ${s2} >> $LOG 2>&1
+    echo `date` "LCD" ${s1} "/" ${s2} >> $LOG 2>&1
 }
 
 # ラジオ再生用の関数を定義
@@ -320,7 +320,7 @@ while true; do
     fi
     if [ $SECONDS -gt 60 ]; then
         SECONDS=$((`date |cut -d":" -f3`))
-        echo `date` "set SECONDS="${SECONDS}
+        # echo `date` "set SECONDS="${SECONDS} >> $LOG 2>&1
         # lcd_reset >> $LOG 2>&1  # LCD動作が不安定なときに有効にする
         lcd "`date|cut -c1-16`" "${lcd_s2}" >> $LOG 2>&1
     fi
