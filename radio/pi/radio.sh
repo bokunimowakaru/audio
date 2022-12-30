@@ -54,7 +54,7 @@ FILEPATH="/home/pi/Music"   # MusicBox用のファイルパス
 TEMP_DIR="/radio_sh_tmp"    # MusicBox用のファイルパス
 BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
 BUTTON_MODE_IO="22"         # モード切替ボタン(使用しないときは0)
-LCD_IO="16"                 # LCD用電源用IOポート番号を指定する(使用しないときは0)
+LCD_IO="16"                 # LCD用電源用IOポート番号を指定する
 START_PRE=10                # 開始待機時間(OS起動待ち・インターネット接続待ち時間)
 
 AUDIO_APP="ffplay"                          # インストールした再生アプリ
@@ -126,10 +126,10 @@ lcd (){
     fi
     if [ -n "$LCD_APP" ]; then
         if [ -n "${s2}" ]; then
-            $LCD_APP -i -w16 ${s1} > /dev/null 2>&1
-            $LCD_APP -i -w16 -y2 ${s2} > /dev/null 2>&1
+            $LCD_APP -i -w16 -r${LCD_IO} ${s1} > /dev/null 2>&1
+            $LCD_APP -i -w16 -r${LCD_IO} -y2 ${s2} > /dev/null 2>&1
         else
-            $LCD_APP -i -w16 -y1 ${s1} > /dev/null 2>&1
+            $LCD_APP -i -w16 -r${LCD_IO} -y1 ${s1} > /dev/null 2>&1
         fi
     fi
     echo `date` "LCD" ${s1} ${s2} >> $LOG 2>&1
