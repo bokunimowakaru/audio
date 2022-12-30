@@ -334,14 +334,18 @@ byte i2c_tx(const byte in){
 	_delayMicroseconds(I2C_RAMDA);
 	i2c_SDA(1);								// (SDA)	H Imp  2016/6/26 先にSDAを終わらせる
 	i2c_SCL(1);								// (SCL)	H Imp
-	for(i=3;i>0;i--){						// さらにクロックを上げた瞬間には確定しているハズ
-		if( digitalRead(PORT_SDA) == 0 ) break;	// 速やかに確認
-		_delayMicroseconds(I2C_RAMDA/2);
-	}
-	if(i==0 && ERROR_CHECK ){
-		i2c_SCL(0);							// (SCL)	L Out
-		i2c_log("no ACK");
-		return 0;
+	if(!ERROR_CHECK){
+		_delayMicroseconds(I2C_RAMDA);
+	}else{
+		for(i=3;i>0;i--){						// さらにクロックを上げた瞬間には確定しているハズ
+			if( digitalRead(PORT_SDA) == 0 ) break;	// 速やかに確認
+			_delayMicroseconds(I2C_RAMDA/2);
+		}
+		if(i==0){
+			i2c_SCL(0);							// (SCL)	L Out
+			i2c_log("no ACK");
+			return 0;
+		}
 	}
     #ifdef DEBUG
     //	fprintf(stderr,"i2c_tx / GPIO_RETRY (%d/%d)\n",GPIO_RETRY-i,GPIO_RETRY);
