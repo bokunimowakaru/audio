@@ -220,35 +220,43 @@ echo >> $LOG 2>&1
 
 # MusicBox用 ファイル用リンク作成
 mkdir -p ${FILEPATH}${TEMP_DIR}
-rm -f ${FILEPATH}${TEMP_DIR}/*
-i=1
-ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 2> /dev/null | while read filename; do
-    name=`echo ${filename}|rev|cut -d'.' -f2|cut -d'/' -f1|rev`
-    ext=`echo ${filename}|rev|cut -d'.' -f1|rev`
-    ln -s "${filename}" "${FILEPATH}${TEMP_DIR}/${i}.lnk"
-    # https://www.ffmpeg.org/ffmpeg-formats.html#Metadata-1
-    ffmpeg -nostdin -i "${FILEPATH}${TEMP_DIR}/${i}.lnk" -f ffmetadata "${FILEPATH}${TEMP_DIR}/${i}.txt" &> /dev/null
-    type=`file "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d" " -f2`
-    if [ "${type}" != "UTF-8" ] && [ "${type}" != "ASCII" ]; then
-        mv "${FILEPATH}${TEMP_DIR}/${i}.txt" "${FILEPATH}${TEMP_DIR}/${i}.txt~"
-        iconv -f sjis -t utf8 "${FILEPATH}${TEMP_DIR}/${i}.txt~" > "${FILEPATH}${TEMP_DIR}/${i}.txt"
-    fi
-    artist=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f1`
-    title=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f2|cut -d"." -f1`
-    echo "filename_artist="${artist} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
-    echo "filename_title="${title} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
-    echo `date` "Metadata" ${i} "ARTIST" `grep -i artist "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
-    echo `date` "Metadata" ${i} "TITLE" `grep -i title "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
-    i=$(( i + 1 ))
-done
-file_max=$((`ls -t ${FILEPATH}${TEMP_DIR}|head -1|cut -d"." -f1`))
+ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 > ${FILEPATH}${TEMP_DIR}/list.txt
+i="none"
+if [ -e ${FILEPATH}${TEMP_DIR}/list.txt~ ]; then
+    i=`diff ${FILEPATH}${TEMP_DIR}/list.txt ${FILEPATH}${TEMP_DIR}/list.txt~`
+fi
+if [ "${i}" != "" ]; then
+    rm -f ${FILEPATH}${TEMP_DIR}/*.lnk ${FILEPATH}${TEMP_DIR}/[1-9]*.txt
+    i=1
+    SECONDS=0
+    ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 2> /dev/null | while read filename; do
+        name=`echo ${filename}|rev|cut -d'.' -f2|cut -d'/' -f1|rev`
+        ext=`echo ${filename}|rev|cut -d'.' -f1|rev`
+        ln -s "${filename}" "${FILEPATH}${TEMP_DIR}/${i}.lnk"
+        # https://www.ffmpeg.org/ffmpeg-formats.html#Metadata-1
+        ffmpeg -nostdin -i "${FILEPATH}${TEMP_DIR}/${i}.lnk" -f ffmetadata "${FILEPATH}${TEMP_DIR}/${i}.txt" &> /dev/null
+        type=`file "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d" " -f2`
+        if [ "${type}" != "UTF-8" ] && [ "${type}" != "ASCII" ]; then
+            mv "${FILEPATH}${TEMP_DIR}/${i}.txt" "${FILEPATH}${TEMP_DIR}/${i}.txt~"
+            iconv -f sjis -t utf8 "${FILEPATH}${TEMP_DIR}/${i}.txt~" > "${FILEPATH}${TEMP_DIR}/${i}.txt"
+        fi
+        artist=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f1`
+        title=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f2|cut -d"." -f1`
+        echo "filename_artist="${artist} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
+        echo "filename_title="${title} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
+        echo `date` "Metadata" ${i} "ARTIST" `grep -i artist "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
+        echo `date` "Metadata" ${i} "TITLE" `grep -i title "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
+        i=$(( i + 1 ))
+    done
+fi
+file_max=$((`ls -t ${FILEPATH}${TEMP_DIR}/*.lnk|head -1|rev|cut -d"/" -f1|rev|cut -d"." -f1`))
+cp -f ${FILEPATH}${TEMP_DIR}/list.txt ${FILEPATH}${TEMP_DIR}/list.txt~
 echo `date` "MusicBox:" ${file_max} "files" >> $LOG 2>&1
 
 # OS起動・インターネット接続待ち
 echo -n `date` "Please wait" $START_PRE "seconds." >> $LOG 2>&1
-while [ $START_PRE -gt 0 ]; do
+while [ $START_PRE -gt $SECONDS ]; do
     sleep 1
-    START_PRE=$((START_PRE -1))
     echo -n "." >> $LOG 2>&1
 done
 echo >> $LOG 2>&1
@@ -282,40 +290,44 @@ SECONDS=0
 
 # ループ処理
 while true; do
+    sec_prev=$SECONDS
+    while [ $sec_prev -eq $SECONDS ]; do
+        button_mode
+        if [ $? -eq 0 ]; then
+            echo `date` "[mode] button is pressed" >> $LOG 2>&1
+            mode=$((mode + 1))
+            if [ $mode -gt $moden ]; then
+                # lcd_reset >> $LOG 2>&1  # LCD動作が不安定なときに有効にする
+                mode=1
+            fi
+            play 0
+            sleep 0.3
+        fi
+        button
+        if [ $? -eq 0 ]; then
+            echo `date` "[next] button is pressed" >> $LOG 2>&1
+            kill `pidof ffplay`
+            sleep 0.3
+            button
+            if [ $? -eq 0 ]; then
+                lcd "ﾎﾞﾀﾝ ｦ ｵｼﾂﾂﾞｹﾙﾄ" "ｼｬｯﾄﾀﾞｳﾝ ｼﾏｽ"
+                sleep 2
+                button
+                if [ $? -eq 0 ]; then
+                    lcd "Shuting down..." "Please wait"
+                    date >> $LOG 2>&1
+                    echo "shutdown -h now" >> $LOG 2>&1
+                    sudo shutdown -h now # 動作確認してから変更すること
+                    exit 0
+                fi
+            fi
+            play 1
+        fi
+        sleep 0.05
+    done
     pidof ffplay > /dev/null
     if [ $? -ne 0 ]; then
         echo `date` "[pidof] detected no music" >> $LOG 2>&1
-        play 1
-    fi
-    button_mode
-    if [ $? -eq 0 ]; then
-        echo `date` "[mode] button is pressed" >> $LOG 2>&1
-        mode=$((mode + 1))
-        if [ $mode -gt $moden ]; then
-            # lcd_reset >> $LOG 2>&1  # LCD動作が不安定なときに有効にする
-            mode=1
-        fi
-        play 0
-        sleep 0.3
-    fi
-    button
-    if [ $? -eq 0 ]; then
-        echo `date` "[next] button is pressed" >> $LOG 2>&1
-        kill `pidof ffplay`
-        sleep 0.3
-        button
-        if [ $? -eq 0 ]; then
-            lcd "ﾎﾞﾀﾝ ｦ ｵｼﾂﾂﾞｹﾙﾄ" "ｼｬｯﾄﾀﾞｳﾝ ｼﾏｽ"
-            sleep 2
-            button
-            if [ $? -eq 0 ]; then
-                lcd "Shuting down..." "Please wait"
-                date >> $LOG 2>&1
-                echo "shutdown -h now" >> $LOG 2>&1
-                sudo shutdown -h now # 動作確認してから変更すること
-                exit 0
-            fi
-        fi
         play 1
     fi
     if [ $SECONDS -gt 60 ]; then
@@ -324,6 +336,5 @@ while true; do
         # lcd_reset >> $LOG 2>&1  # LCD動作が不安定なときに有効にする
         lcd "`date|cut -c1-16`" "${lcd_s2}" >> $LOG 2>&1
     fi
-    sleep 0.05
 done
 exit
