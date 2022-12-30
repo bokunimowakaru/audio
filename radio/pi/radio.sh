@@ -223,15 +223,21 @@ mkdir -p ${FILEPATH}${TEMP_DIR}
 rm -f ${FILEPATH}${TEMP_DIR}/*
 i=1
 ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 2> /dev/null | while read filename; do
+    name=`echo ${filename}|rev|cut -d'.' -f2|cut -d'/' -f1|rev`
     ext=`echo ${filename}|rev|cut -d'.' -f1|rev`
     ln -s "${filename}" "${FILEPATH}${TEMP_DIR}/${i}.lnk"
     # https://www.ffmpeg.org/ffmpeg-formats.html#Metadata-1
     ffmpeg -nostdin -i "${FILEPATH}${TEMP_DIR}/${i}.lnk" -f ffmetadata "${FILEPATH}${TEMP_DIR}/${i}.txt" &> /dev/null
     type=`file "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d" " -f2`
-    if [ "${type}" != "UTF-8" ]; then
+    if [ "${type}" != "UTF-8" ] && [ "${type}" != "ASCII" ]; then
         mv "${FILEPATH}${TEMP_DIR}/${i}.txt" "${FILEPATH}${TEMP_DIR}/${i}.txt~"
         iconv -f sjis -t utf8 "${FILEPATH}${TEMP_DIR}/${i}.txt~" > "${FILEPATH}${TEMP_DIR}/${i}.txt"
     fi
+    artist=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f1`
+    title=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f2|cut -d"." -f1`
+    echo "filename_artist="${artist} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
+    echo "filename_title="${title} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
+    echo `date` "Metadata" ${i} "ARTIST" `grep -i artist "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
     echo `date` "Metadata" ${i} "TITLE" `grep -i title "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
     i=$(( i + 1 ))
 done
@@ -286,7 +292,7 @@ while true; do
         echo `date` "[mode] button is pressed" >> $LOG 2>&1
         mode=$((mode + 1))
         if [ $mode -gt $moden ]; then
-            lcd_reset >> $LOG 2>&1
+            # lcd_reset >> $LOG 2>&1  # LCD動作が不安定なときに有効にする
             mode=1
         fi
         play 0
@@ -315,7 +321,7 @@ while true; do
     if [ $SECONDS -gt 60 ]; then
         SECONDS=$((`date |cut -d":" -f3`))
         echo `date` "set SECONDS="${SECONDS}
-        lcd_reset >> $LOG 2>&1
+        # lcd_reset >> $LOG 2>&1  # LCD動作が不安定なときに有効にする
         lcd "`date|cut -c1-16`" "${lcd_s2}" >> $LOG 2>&1
     fi
     sleep 0.05
