@@ -300,28 +300,28 @@ while true; do
                 # lcd_reset >> $LOG 2>&1  # LCD動作が不安定なときに有効にする
                 mode=1
             fi
-            play 0
             sleep 0.3
+            button_mode
+            if [ $? -eq 0 ]; then
+                lcd "ﾎﾞﾀﾝ ｦ ｵｼﾂﾂﾞｹﾙﾄ" "ｼｬｯﾄﾀﾞｳﾝ ｼﾏｽ"
+                sleep 2
+                button_mode
+                if [ $? -eq 0 ]; then
+                    lcd "Shuting down..." "Please wait"
+                    date >> $LOG 2>&1
+                    echo "shutdown -h now" >> $LOG 2>&1
+                    sudo shutdown -h now
+                    exit 0
+                fi
+            fi
+            play 0
         fi
         button
         if [ $? -eq 0 ]; then
             echo `date` "[next] button is pressed" >> $LOG 2>&1
             kill `pidof ffplay`
-            sleep 0.3
-            button
-            if [ $? -eq 0 ]; then
-                lcd "ﾎﾞﾀﾝ ｦ ｵｼﾂﾂﾞｹﾙﾄ" "ｼｬｯﾄﾀﾞｳﾝ ｼﾏｽ"
-                sleep 2
-                button
-                if [ $? -eq 0 ]; then
-                    lcd "Shuting down..." "Please wait"
-                    date >> $LOG 2>&1
-                    echo "shutdown -h now" >> $LOG 2>&1
-                    sudo shutdown -h now # 動作確認してから変更すること
-                    exit 0
-                fi
-            fi
             play 1
+            sleep 0.3
         fi
         sleep 0.05
     done
