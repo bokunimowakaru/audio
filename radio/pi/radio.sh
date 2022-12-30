@@ -14,11 +14,12 @@
 #
 # 要件：
 #
-# 本ソフトのインストール：
-#   $ sudo apt install raspi-gpio (LITE版)
-#   $ sudo apt install alsa-utils (LITE版)
-#   $ sudo apt install ffmpeg
-#   $ sudo apt install git (LITE版)
+# 本ソフトのインストール($よりも後ろのコマンドを入力)：
+#   $ cd ⏎
+#   $ sudo apt install raspi-gpio ⏎ (LITE版)
+#   $ sudo apt install alsa-utils ⏎ (LITE版)
+#   $ sudo apt install ffmpeg ⏎
+#   $ sudo apt install git ⏎ (LITE版)
 #   $ git clone https://bokunimo.net/git/audio ⏎
 #   $ cd audio/radio/pi ⏎
 #   $ make ⏎
@@ -34,13 +35,18 @@
 #       @reboot /home/pi/audio/radio/pi/radio.sh &
 #
 # 実行権限の付与が必要：
-#   chmod u+x /etc/rc.local
+#   $ chmod u+x /etc/rc.local ⏎
 #
 # (参考文献)ネットラジオ検索：
 #   https://directory.shoutcast.com/
 #
+# (参考情報)LCD表示用プログラム raspi_lcd の使い方：
+#   $ cd ~/audio/radio/pi ⏎
+#   $ ./raspi_lcd -h ⏎
+#
 # (参考文献)GPIO用コマンド
-#   raspi-gpio help
+#   $ raspi-gpio help ⏎
+#
 
 export SDL_AUDIODRIVER=alsa # オーディオ出力にALSAを使用する設定
 export AUDIODEV="hw:0,0"    # aplay -lで表示されたカード番号とサブデバイス番号を入力する
@@ -119,9 +125,11 @@ lcd (){
         fi
     fi
     if [ -n "$LCD_APP" ]; then
-        $LCD_APP -i -w16 ${s1} > /dev/null 2>&1
-        if [ -n "$s2" ]; then
+        if [ -n "${s2}" ]; then
+            $LCD_APP -i -w16 ${s1} > /dev/null 2>&1
             $LCD_APP -i -w16 -y2 ${s2} > /dev/null 2>&1
+        else
+            $LCD_APP -i -w16 -y1 ${s1} > /dev/null 2>&1
         fi
     fi
     echo `date` "LCD" ${s1} ${s2} >> $LOG 2>&1
@@ -132,7 +140,8 @@ radio (){
     echo `date` "radio" $1 >> $LOG 2>&1
     if [ $1 -ge 1 ] && [ $1 -le $urln ]; then
         url_ch=(${urls[$(($1 - 1))]})
-        lcd "InternetRadio_"${1} ${url_ch[0]}
+        lcd_s2=${url_ch[0]}
+        lcd "InternetRadio_"${1} ${lcd_s2}
         kill `pidof ffplay` &> /dev/null
         if [ $AUDIO_APP = "ffplay" ]; then
             ffplay -nodisp ${url_ch[1]} &> /dev/null &
@@ -146,7 +155,15 @@ radio (){
 music_box (){
     echo `date` "music_box" $1 >> $LOG 2>&1
     if [ $1 -ge 1 ] && [ $1 -le $file_max ]; then
-        lcd "MusicBox_File"${1}
+        lcd_s1=`grep -i artist "${FILEPATH}${TEMP_DIR}/${filen}.txt"|cut -d"=" -f2|head -1`
+        lcd_s2=`grep -i title "${FILEPATH}${TEMP_DIR}/${filen}.txt"|cut -d"=" -f2|head -1`
+        if [ -z ${lcd_s1} ]; then
+            lcd_s1="MusicBox_File"${1}
+        fi
+        if [ -z ${lcd_s2} ]; then
+            lcd_s2="no title"
+        fi
+        lcd "${lcd_s1}" "${lcd_s2}"
         kill `pidof ffplay` &> /dev/null
         if [ $AUDIO_APP = "ffplay" ]; then
             ffplay -nodisp -autoexit ${FILEPATH}${TEMP_DIR}/${filen}.lnk &> /dev/null &
@@ -171,6 +188,7 @@ play (){
         fi
         music_box $filen
     fi
+    SECONDS=0
 }
 
 # ボタン状態を取得 (取得できないときは0,BUTTON_IO未設定時は1)
@@ -207,17 +225,25 @@ i=1
 ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 2> /dev/null | while read filename; do
     ext=`echo ${filename}|rev|cut -d'.' -f1|rev`
     ln -s "${filename}" "${FILEPATH}${TEMP_DIR}/${i}.lnk"
+    # https://www.ffmpeg.org/ffmpeg-formats.html#Metadata-1
+    ffmpeg -nostdin -i "${FILEPATH}${TEMP_DIR}/${i}.lnk" -f ffmetadata "${FILEPATH}${TEMP_DIR}/${i}.txt" &> /dev/null
+    type=`file "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d" " -f2`
+    if [ "${type}" != "UTF-8" ]; then
+        mv "${FILEPATH}${TEMP_DIR}/${i}.txt" "${FILEPATH}${TEMP_DIR}/${i}.txt~"
+        iconv -f sjis -t utf8 "${FILEPATH}${TEMP_DIR}/${i}.txt~" > "${FILEPATH}${TEMP_DIR}/${i}.txt"
+    fi
+    echo `date` "Metadata" ${i} "TITLE" `grep -i title "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
     i=$(( i + 1 ))
 done
 file_max=$((`ls -t ${FILEPATH}${TEMP_DIR}|head -1|cut -d"." -f1`))
 echo `date` "MusicBox:" ${file_max} "files" >> $LOG 2>&1
 
 # OS起動・インターネット接続待ち
-echo -n `date` "Please wait" $START_PRE "seconds."
+echo -n `date` "Please wait" $START_PRE "seconds." >> $LOG 2>&1
 while [ $START_PRE -gt 0 ]; do
     sleep 1
     START_PRE=$((START_PRE -1))
-    echo -n "."
+    echo -n "." >> $LOG 2>&1
 done
 echo
 
@@ -242,9 +268,12 @@ done
 ch=1
 filen=1
 mode=1
-lcd_reset >> $LOG 2>&1
+lcd_s2="no title" # 再生中の曲名
+lcd_reset >> $LOG 2>&1 # 起動時に実行しているがOS起動が未完了だった可能性もあるので再実行
 play 0
-sleep 5  # 初回再生時のインターネット接続待ち時間
+sleep 5 # 初回再生時のインターネット接続待ち時間(初回時のネットワーク接続時間を考慮)
+SECONDS=0
+
 # ループ処理
 while true; do
     pidof ffplay > /dev/null
@@ -282,6 +311,12 @@ while true; do
             fi
         fi
         play 1
+    fi
+    if [ $SECONDS -gt 60 ]; then
+        SECONDS=$((`date |cut -d":" -f3`))
+        echo `date` "set SECONDS="${SECONDS}
+        lcd_reset >> $LOG 2>&1
+        lcd "`date|cut -c1-16`" "${lcd_s2}" >> $LOG 2>&1
     fi
     sleep 0.05
 done
