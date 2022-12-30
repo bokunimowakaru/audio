@@ -251,7 +251,7 @@ while [ $START_PRE -gt 0 ]; do
     START_PRE=$((START_PRE -1))
     echo -n "." >> $LOG 2>&1
 done
-echo
+echo >> $LOG 2>&1
 
 # ボタン入力用GPIO設定
 button
