@@ -65,6 +65,21 @@ int main(int argc,char **argv){
 			if(ROW != 0 && ROW != 1) ROW = 0;
 			printf("LCD Y (%d)\n",ROW + 1);
 		}
+		if(argv[num][1]=='h'){
+			printf("Usage:\n");
+			printf("  %s [-i] [-f] [-r port] [-w lcd_width] [-y row] [text...]\n",argv[0]);
+			printf("  echo text... | %s [-i] [-f] [-r port] [-w lcd_width] [-y row]\n",argv[0]);
+			printf("  %s -h\n",argv[0]);
+			printf("    options:\n");
+			printf("      -i      I2C通信のエラーを無視する\n");
+			printf("      -f      標準入力から待ち受けを行う（終了しない）\n");
+			printf("      -rPORT  液晶のリセット信号用GPIOポート番号\n");
+			printf("      -wWIDTH 液晶の表示桁数8または16\n");
+			printf("      -yROW   表示行1または2\n");
+			printf("      text... 表示したい文字列\n");
+			printf("      -h      本ヘルプの表示\n");
+			return 0;
+		}
 		num++;
 	}
 	if(argc==num) fgets(s,sizeof(s),stdin);
