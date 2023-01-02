@@ -4,7 +4,7 @@
 #   radio.sh
 #   radio_basic.sh
 #
-#                                       Copyright (c) 2017 - 2022 Wataru KUNINO
+#                                       Copyright (c) 2022 - 2023 Wataru KUNINO
 ################################################################################
 # 解説：
 #   実行するとインターネットラジオを再生します。
@@ -149,7 +149,7 @@ radio (){
     else
         echo "ERROR radio ch" $1 >> $LOG 2>&1
     fi
-    sleep 0.3
+    # sleep 0.1
 }
 
 music_box (){
@@ -171,7 +171,7 @@ music_box (){
     else
         echo "ERROR music_box ch" $1 >> $LOG 2>&1
     fi
-    sleep 0.3
+    # sleep 0.1
 }
 
 play (){
@@ -209,6 +209,35 @@ button_mode (){
     fi
 }
 
+button_shutdown (){
+    ret=-1
+    if [ $(($BUTTON_MODE_IO)) -gt 0 ]; then
+        button_mode
+        ret=$?
+    elif [ $(($BUTTON_IO)) -gt 0 ]; then
+        sleep 0.3
+        button
+        ret=$?
+    fi
+    if [ $ret -eq 0 ]; then
+        lcd "ﾎﾞﾀﾝ ｦ ｵｼﾂﾂﾞｹﾙﾄ" "ｼｬｯﾄﾀﾞｳﾝ ｼﾏｽ"
+        sleep 2
+        if [ $(($BUTTON_MODE_IO)) -gt 0 ]; then
+            button_mode
+            ret=$?
+        elif [ $(($BUTTON_IO)) -gt 0 ]; then
+            button
+            ret=$?
+        fi
+        if [ $ret -eq 0 ]; then
+            lcd "Shuting down..." "Please wait"
+            date >> $LOG 2>&1
+            echo "shutdown -h now" >> $LOG 2>&1
+            sudo shutdown -h now
+            exit 0
+        fi
+    fi
+}
 
 # 初期設定
 echo `date` "STARTED ---------------------" >> $LOG 2>&1
@@ -301,19 +330,7 @@ while true; do
                 mode=1
             fi
             sleep 0.3
-            button_mode
-            if [ $? -eq 0 ]; then
-                lcd "ﾎﾞﾀﾝ ｦ ｵｼﾂﾂﾞｹﾙﾄ" "ｼｬｯﾄﾀﾞｳﾝ ｼﾏｽ"
-                sleep 2
-                button_mode
-                if [ $? -eq 0 ]; then
-                    lcd "Shuting down..." "Please wait"
-                    date >> $LOG 2>&1
-                    echo "shutdown -h now" >> $LOG 2>&1
-                    sudo shutdown -h now
-                    exit 0
-                fi
-            fi
+            button_shutdown
             play 0
         fi
         button
@@ -321,9 +338,9 @@ while true; do
             echo `date` "[next] button is pressed" >> $LOG 2>&1
             kill `pidof ffplay`
             play 1
-            sleep 0.3
+            button_shutdown
         fi
-        sleep 0.05
+        sleep 0.03
     done
     pidof ffplay > /dev/null
     if [ $? -ne 0 ]; then
