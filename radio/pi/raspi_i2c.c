@@ -30,7 +30,7 @@ https://github.com/bokunimowakaru/RaspberryPi/blob/master/libs/soft_i2c.c
 #include <sys/time.h>					// gettimeofday用
 #include <string.h>						// strncpy用
 
-// #define RASPI_GPIO // 未だ動作しません。【途中保存】
+// #define RASPI_GPIO // 動作未確認。【動作速度が、かなり遅い】
 #define I2C_lcd 0x3E							// LCD の I2C アドレス 
 #define PORT_SCL	"/sys/class/gpio/gpio3/value"		// I2C SCLポート
 #define PORT_SDA	"/sys/class/gpio/gpio2/value"		// I2C SDAポート
