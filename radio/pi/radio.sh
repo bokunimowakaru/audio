@@ -28,14 +28,31 @@
 #   $ vi audio/radio/pi/radio.sh ⏎
 #       export AUDIODEV="hw:1,0"
 #
-# 自動起動：
+# (参考) 自動起動：
 #   /etc/rc.localに追加する場合
 #       su -l pi -s /bin/bash -c /home/pi/audio/radio/pi/radio.sh &
 #   crontabに追加する場合
 #       @reboot /home/pi/audio/radio/pi/radio.sh &
 #
-# 実行権限の付与が必要：
-#   $ chmod u+x /etc/rc.local ⏎
+#   実行権限の付与が必要：
+#       $ chmod u+x /etc/rc.local ⏎
+#
+# (参考) ファイル共有サーバ Samba のインストール
+#   $ sudo apt install samba ⏎
+#   $ sudo mousepad /etc/samba/smb.conf & ⏎
+#       (下記を追加)
+#       [music]
+#          comment = Music Folder
+#          path = /home/pi/Music
+#          read only = no
+#          create mask = 0644
+#   $ sudo pdbedit -a pi ⏎
+#   new password: (ファイル共有用パスワード) ⏎
+#   retype new password: (ファイル共有用パスワード) ⏎
+#   $ mkdir -p /home/pi/Music ⏎
+#
+#   Windowsのエクスプローラーから以下でアクセスできるようになる
+#       \\(IPアドレス)\music
 #
 # (参考文献)ネットラジオ検索：
 #   https://directory.shoutcast.com/
