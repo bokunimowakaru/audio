@@ -16,10 +16,10 @@
 #
 # 本ソフトのインストール($よりも後ろのコマンドを入力)：
 #   $ cd ⏎
-#   $ sudo apt install raspi-gpio ⏎ (LITE版)
-#   $ sudo apt install alsa-utils ⏎ (LITE版)
+#   $ sudo apt install raspi-gpio ⏎ (古いOS使用時)
+#   $ sudo apt install alsa-utils ⏎ (LITE版OS使用時)
 #   $ sudo apt install ffmpeg ⏎
-#   $ sudo apt install git ⏎ (LITE版)
+#   $ sudo apt install git ⏎ (LITE版OS使用時)
 #   $ git clone https://bokunimo.net/git/audio ⏎
 #   $ cd audio/radio/pi ⏎
 #   $ make ⏎
