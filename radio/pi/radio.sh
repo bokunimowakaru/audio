@@ -25,6 +25,7 @@
 #   $ sudo apt install git ⏎ (LITE版OS使用時)
 #   $ git clone https://bokunimo.net/git/audio ⏎
 #   $ cd audio/radio/pi ⏎
+#   $ make clean ⏎
 #   $ make ⏎
 #   $ ./radio.sh ⏎
 #   (音が出ないときは、下記のカード番号、デバイス番号を変更して再実行)
