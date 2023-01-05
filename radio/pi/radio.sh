@@ -10,11 +10,14 @@
 #   実行するとインターネットラジオを再生します。
 #
 # 詳細：
+#   Radio & Jukebox
+#   https://bokunimo.net/blog/raspberry-pi/3179/
+#
+#   DAC PCM5102A で Raspberry Pi オーディオ
 #   https://bokunimo.net/blog/raspberry-pi/3123/
 #
 # 要件：
-#
-# 本ソフトのインストール($よりも後ろのコマンドを入力)：
+#   本ソフトのインストール($よりも後ろのコマンドを入力)：
 #   $ cd ⏎
 #   $ sudo apt install raspi-gpio ⏎ (古いOS使用時)
 #   $ sudo apt install alsa-utils ⏎ (LITE版OS使用時)

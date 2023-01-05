@@ -9,25 +9,28 @@
 #   実行するとインターネットラジオを再生します。
 #
 # 詳細：
+#   Radio & Jukebox
+#   https://bokunimo.net/blog/raspberry-pi/3179/
+#
+#   DAC PCM5102A で Raspberry Pi オーディオ
 #   https://bokunimo.net/blog/raspberry-pi/3123/
 #
 # 要件：
-#
-# 本ソフトのインストール($よりも後ろのコマンドを入力)：
+#   本ソフトのインストール($よりも後ろのコマンドを入力)：
 #   $ cd ⏎
-#   $ sudo apt install raspi-gpio ⏎ (LITE版)
-#   $ sudo apt install alsa-utils ⏎ (LITE版)
+#   $ sudo apt install alsa-utils ⏎ (LITE版OS使用時)
 #   $ sudo apt install ffmpeg ⏎
-#   $ sudo apt install git ⏎ (LITE版)
+#   $ sudo apt install git ⏎ (LITE版OS使用時)
 #   $ git clone https://bokunimo.net/git/audio ⏎
 #   $ cd audio/radio/pi ⏎
+#   $ ./radio.sh ⏎
 #   (音が出ないときは、下記のカード番号、デバイス番号を変更して再実行)
-#   $ vi audio/radio/pi/radio_basic.sh ⏎
+#   $ vi audio/radio/pi/radio.sh ⏎
 #       export AUDIODEV="hw:1,0"
 #
 # (参考文献)ネットラジオ検索：
 #   https://directory.shoutcast.com/
-##
+#
 # (参考文献)GPIO用コマンド
 #   $ raspi-gpio help ⏎
 #
