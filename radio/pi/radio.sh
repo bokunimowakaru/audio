@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# インターネットラジオ (basicは基本機能のみ)
+# インターネットラジオ＋ジュークボックス (basicは基本機能のみ)
 #   radio.sh
 #   radio_basic.sh
 #
@@ -173,6 +173,7 @@ radio (){
     # sleep 0.1
 }
 
+# Jukebox用の関数を定義
 music_box (){
     echo `date` "music_box" $1 >> $LOG 2>&1
     if [ $1 -ge 1 ] && [ $1 -le $file_max ]; then
@@ -260,6 +261,42 @@ button_shutdown (){
     fi
 }
 
+# MusicBox用 ファイル用リンク作成
+music_file_list (){
+    ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 > ${FILEPATH}${TEMP_DIR}/list.txt
+    i="none"
+    if [ -e ${FILEPATH}${TEMP_DIR}/list.txt~ ]; then
+        i=`diff ${FILEPATH}${TEMP_DIR}/list.txt ${FILEPATH}${TEMP_DIR}/list.txt~`
+    fi
+    if [ "${i}" != "" ] || [ $# -ge 1 ] ; then
+        lcd "ﾌｧｲﾙ ﾘｽﾄ ｻｸｾｲﾁｭｳ" "${FILEPATH}"
+        rm -f ${FILEPATH}${TEMP_DIR}/*.lnk ${FILEPATH}${TEMP_DIR}/[1-9]*.txt
+        i=1
+        SECONDS=0
+        ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 2> /dev/null | while read filename; do
+            name=`echo ${filename}|rev|cut -d'.' -f2|cut -d'/' -f1|rev`
+            ext=`echo ${filename}|rev|cut -d'.' -f1|rev`
+            ln -s "${filename}" "${FILEPATH}${TEMP_DIR}/${i}.lnk"
+            # https://www.ffmpeg.org/ffmpeg-formats.html#Metadata-1
+            ffmpeg -nostdin -i "${FILEPATH}${TEMP_DIR}/${i}.lnk" -f ffmetadata "${FILEPATH}${TEMP_DIR}/${i}.txt" &> /dev/null
+            type=`file "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d" " -f2`
+            if [ "${type}" != "UTF-8" ] && [ "${type}" != "ASCII" ]; then
+                mv "${FILEPATH}${TEMP_DIR}/${i}.txt" "${FILEPATH}${TEMP_DIR}/${i}.txt~"
+                iconv -f sjis -t utf8 "${FILEPATH}${TEMP_DIR}/${i}.txt~" > "${FILEPATH}${TEMP_DIR}/${i}.txt"
+            fi
+            artist=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f1`
+            title=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f2|cut -d"." -f1`
+            echo "filename_artist="${artist} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
+            echo "filename_title="${title} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
+            echo `date` "Metadata" ${i} "ARTIST" `grep -i artist "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
+            echo `date` "Metadata" ${i} "TITLE" `grep -i title "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
+            i=$(( i + 1 ))
+        done
+    fi
+    file_max=$((`ls -t ${FILEPATH}${TEMP_DIR}/*.lnk|head -1|rev|cut -d"/" -f1|rev|cut -d"." -f1`))
+    cp -f ${FILEPATH}${TEMP_DIR}/list.txt ${FILEPATH}${TEMP_DIR}/list.txt~
+}
+
 # 初期設定
 echo `date` "STARTED ---------------------" >> $LOG 2>&1
 lcd_reset >> $LOG 2>&1
@@ -267,40 +304,9 @@ lcd >> $LOG 2>&1
 echo -n `date`" " >> $LOG 2>&1
 /home/pi/audio/tools/olCheck.sh|tr "\n" " " >> $LOG 2>&1
 echo >> $LOG 2>&1
-
-# MusicBox用 ファイル用リンク作成
+file_max=0
 mkdir -p ${FILEPATH}${TEMP_DIR}
-ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 > ${FILEPATH}${TEMP_DIR}/list.txt
-i="none"
-if [ -e ${FILEPATH}${TEMP_DIR}/list.txt~ ]; then
-    i=`diff ${FILEPATH}${TEMP_DIR}/list.txt ${FILEPATH}${TEMP_DIR}/list.txt~`
-fi
-if [ "${i}" != "" ]; then
-    rm -f ${FILEPATH}${TEMP_DIR}/*.lnk ${FILEPATH}${TEMP_DIR}/[1-9]*.txt
-    i=1
-    SECONDS=0
-    ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 2> /dev/null | while read filename; do
-        name=`echo ${filename}|rev|cut -d'.' -f2|cut -d'/' -f1|rev`
-        ext=`echo ${filename}|rev|cut -d'.' -f1|rev`
-        ln -s "${filename}" "${FILEPATH}${TEMP_DIR}/${i}.lnk"
-        # https://www.ffmpeg.org/ffmpeg-formats.html#Metadata-1
-        ffmpeg -nostdin -i "${FILEPATH}${TEMP_DIR}/${i}.lnk" -f ffmetadata "${FILEPATH}${TEMP_DIR}/${i}.txt" &> /dev/null
-        type=`file "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d" " -f2`
-        if [ "${type}" != "UTF-8" ] && [ "${type}" != "ASCII" ]; then
-            mv "${FILEPATH}${TEMP_DIR}/${i}.txt" "${FILEPATH}${TEMP_DIR}/${i}.txt~"
-            iconv -f sjis -t utf8 "${FILEPATH}${TEMP_DIR}/${i}.txt~" > "${FILEPATH}${TEMP_DIR}/${i}.txt"
-        fi
-        artist=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f1`
-        title=`echo ${name}|sed "s/ - /|/g"|cut -d"|" -f2|cut -d"." -f1`
-        echo "filename_artist="${artist} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
-        echo "filename_title="${title} >> "${FILEPATH}${TEMP_DIR}/${i}.txt"
-        echo `date` "Metadata" ${i} "ARTIST" `grep -i artist "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
-        echo `date` "Metadata" ${i} "TITLE" `grep -i title "${FILEPATH}${TEMP_DIR}/${i}.txt"|cut -d"=" -f2|head -1` >> $LOG 2>&1
-        i=$(( i + 1 ))
-    done
-fi
-file_max=$((`ls -t ${FILEPATH}${TEMP_DIR}/*.lnk|head -1|rev|cut -d"/" -f1|rev|cut -d"." -f1`))
-cp -f ${FILEPATH}${TEMP_DIR}/list.txt ${FILEPATH}${TEMP_DIR}/list.txt~
+music_file_list
 echo `date` "MusicBox:" ${file_max} "files" >> $LOG 2>&1
 
 # OS起動・インターネット接続待ち
@@ -351,7 +357,13 @@ while true; do
                 mode=1
             fi
             sleep 0.3
-            button_shutdown
+            button
+            if [ $? -eq 0 ]; then  # modeとnextの両方のボタンが押されていた場合にファイル・リスト化処理を実行
+                music_file_list force
+                echo `date` "MusicBox:" ${file_max} "files" >> $LOG 2>&1
+            else
+                button_shutdown
+            fi
             play 0
         fi
         button
