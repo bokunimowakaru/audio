@@ -242,7 +242,7 @@ button_shutdown (){
         ret=$?
     fi
     if [ $ret -eq 0 ]; then
-        lcd "ﾎﾞﾀﾝ ｦ ｵｼﾂﾂﾞｹﾙﾄ" "ｼｬｯﾄﾀﾞｳﾝ ｼﾏｽ"
+        lcd "ﾎﾞﾀﾝ_ｦ_ｵｼﾂﾂﾞｹﾙﾄ" "ｼｬｯﾄﾀﾞｳﾝ_ｼﾏｽ"
         sleep 2
         if [ $(($BUTTON_MODE_IO)) -gt 0 ]; then
             button_mode
@@ -269,7 +269,7 @@ music_file_list (){
         i=`diff ${FILEPATH}${TEMP_DIR}/list.txt ${FILEPATH}${TEMP_DIR}/list.txt~`
     fi
     if [ "${i}" != "" ] || [ $# -ge 1 ] ; then
-        lcd "ﾌｧｲﾙ ﾘｽﾄ ｻｸｾｲﾁｭｳ" "${FILEPATH}"
+        lcd "ﾌｧｲﾙ_ﾘｽﾄ_ｻｸｾｲﾁｭｳ" "${FILEPATH}"
         rm -f ${FILEPATH}${TEMP_DIR}/*.lnk ${FILEPATH}${TEMP_DIR}/[1-9]*.txt
         i=1
         SECONDS=0
