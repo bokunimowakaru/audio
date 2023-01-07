@@ -115,20 +115,22 @@ date (){
 # LCD初期化用
 lcd_reset (){
     echo -n `date` "LCD reset GPIO"${LCD_IO} >> $LOG 2>&1
-    if [ ${LCD_IO} -ge 0 ]; then
-        # raspi-gpio set 3 ip pu                # PORT_SCL
-        # raspi-gpio set 2 ip pu                # PORT_SDA
-        while [ "`raspi-gpio get ${LCD_IO}|awk '{print $5}'|sed 's/func=//g'`" = "INPUT" ]; do
-            # GPIOの出力設定が効かないことがあるので whileで出力に切り替わるまで繰り返す
-            raspi-gpio set ${LCD_IO} op pn dl   # ouput
-            sleep 1
-            echo -n "." >> $LOG 2>&1
-        done
-        raspi-gpio set ${LCD_IO} dl # RESET and VDD OFF
-        sleep 0.2                   # 電源を落ち切らせるために延長(本来はsleep 0.04 )
-        raspi-gpio set ${LCD_IO} dh # 電源ON
-    fi
+    # if [ ${LCD_IO} -ge 0 ]; then
+    #     # raspi-gpio set 3 ip pu                # PORT_SCL
+    #     # raspi-gpio set 2 ip pu                # PORT_SDA
+    #     while [ "`raspi-gpio get ${LCD_IO}|awk '{print $5}'|sed 's/func=//g'`" = "INPUT" ]; do
+    #         # GPIOの出力設定が効かないことがあるので whileで出力に切り替わるまで繰り返す
+    #         raspi-gpio set ${LCD_IO} op pn dl   # ouput
+    #         sleep 1
+    #         echo -n "." >> $LOG 2>&1
+    #     done
+    #     raspi-gpio set ${LCD_IO} dl # RESET and VDD OFF
+    #     sleep 0.2                   # 電源を落ち切らせるために延長(本来はsleep 0.04 )
+    #     raspi-gpio set ${LCD_IO} dh # 電源ON
+    # fi
     echo >> $LOG 2>&1
+    sleep 0.1
+    $LCD_APP -i -w16 -r${LCD_IO} "LCD reset GPIO"${LCD_IO} > /dev/null 2>&1
     sleep 0.1
 }
 
@@ -147,10 +149,10 @@ lcd (){
     fi
     if [ -n "$LCD_APP" ]; then
         if [ -n "${s2}" ]; then
-            $LCD_APP -i -w16 -r${LCD_IO} ${s1} > /dev/null 2>&1
-            $LCD_APP -i -w16 -r${LCD_IO} -y2 ${s2} > /dev/null 2>&1
+            $LCD_APP -i -w16 ${s1} > /dev/null 2>&1
+            $LCD_APP -i -w16 -y2 ${s2} > /dev/null 2>&1
         else
-            $LCD_APP -i -w16 -r${LCD_IO} -y1 ${s1} > /dev/null 2>&1
+            $LCD_APP -i -w16 -y1 ${s1} > /dev/null 2>&1
         fi
     fi
     echo `date` "LCD" ${s1} "/" ${s2} >> $LOG 2>&1
