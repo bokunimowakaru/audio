@@ -89,7 +89,8 @@ fi
 # 再生モード
 modes=(
     "InternetRadio"
-    "MusicBox"
+    "Jukebox"
+    "Jukebox-shuffle"
 )
 moden=${#modes[*]}
 
@@ -182,7 +183,7 @@ music_box (){
         lcd_s1=`grep -i artist "${FILEPATH}${TEMP_DIR}/${filen}.txt"|cut -d"=" -f2|head -1`
         lcd_s2=`grep -i title "${FILEPATH}${TEMP_DIR}/${filen}.txt"|cut -d"=" -f2|head -1`
         if [ -z "${lcd_s1}" ]; then
-            lcd_s1="MusicBox_File"${1}
+            lcd_s1="Jukebox_File"${1}
         fi
         if [ -z "${lcd_s2}" ]; then
             lcd_s2="no title"
@@ -209,6 +210,11 @@ play (){
         filen=$((filen + $1))
         if [ $filen -gt $file_max ]; then
             filen=1
+        fi
+        music_box $filen
+    elif [ $mode -eq 3 ]; then
+        if [ $file_max -gt 0 ]; then
+            filen=$(( ( $RANDOM % $file_max ) + 1 ))
         fi
         music_box $filen
     fi
@@ -263,7 +269,7 @@ button_shutdown (){
     fi
 }
 
-# MusicBox用 ファイル用リンク作成
+# Jukebox用 ファイル用リンク作成
 music_file_list (){
     ls -1 -t ${FILEPATH}/*.flac ${FILEPATH}/*.mp3 > ${FILEPATH}${TEMP_DIR}/list.txt
     i="none"
@@ -309,7 +315,7 @@ echo >> $LOG 2>&1
 file_max=0
 mkdir -p ${FILEPATH}${TEMP_DIR}
 music_file_list
-echo `date` "MusicBox:" ${file_max} "files" >> $LOG 2>&1
+echo `date` "Jukebox:" ${file_max} "files" >> $LOG 2>&1
 
 # OS起動・インターネット接続待ち
 echo -n `date` "Please wait" $START_PRE "seconds." >> $LOG 2>&1
@@ -358,11 +364,12 @@ while true; do
                 # lcd_reset >> $LOG 2>&1  # LCD動作が不安定なときに有効にする
                 mode=1
             fi
+            lcd ${modes[$(( mode - 1 ))]}
             sleep 0.3
             button
-            if [ $? -eq 0 ]; then  # modeとnextの両方のボタンが押されていた場合にファイル・リスト化処理を実行
-                music_file_list force
-                echo `date` "MusicBox:" ${file_max} "files" >> $LOG 2>&1
+            if [ $? -eq 0 ]; then  # modeとnextの両方のボタンが押されていた場合
+                music_file_list force   # 楽曲リストの更新
+                echo `date` "Jukebox:" ${file_max} "files" >> $LOG 2>&1
             else
                 button_shutdown
             fi
@@ -383,7 +390,7 @@ while true; do
         play 1
     fi
     if [ $SECONDS -gt 60 ]; then
-        SECONDS=$((`date |cut -d":" -f3`))
+        SECONDS=$((`date |cut -d":" -f3|awk '{printf("%d",$1)}'`))   # 00～09秒の時に10の位に0が入るのをawkで対策
         # echo `date` "set SECONDS="${SECONDS} >> $LOG 2>&1
         # lcd_reset >> $LOG 2>&1  # LCD動作が不安定なときに有効にする
         lcd "`date|cut -c1-16`" "${lcd_s2}" >> $LOG 2>&1
