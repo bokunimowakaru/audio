@@ -35,8 +35,8 @@ This audio peak meter shows like VFD on a LCD.
 I used 2 rows 16 digits character LCD AQM1602Y and Raspberry Pi Pico for it.
 It displays 33 levels for each channels, in dB.  
 
-* [(English)](https://translate.google.com/website?sl=ja&tl=en&hl&u=https://bokunimo.net/blog/audio/2807/)  
-* [(日本語)](https://bokunimo.net/blog/audio/2807/)  
+* [(English) Audio Peak Meter](https://translate.google.com/website?sl=ja&tl=en&hl&u=https://bokunimo.net/blog/audio/2807/)  
+* [(日本語) オーディオ用レベルメータ](https://bokunimo.net/blog/audio/2807/)  
 
 ![Peak Level Meter](https://bokunimo.net/blog/wp-content/uploads/2022/11/DSC_1841.jpg)
 
