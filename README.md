@@ -2,6 +2,8 @@
 
 Hi-Fi Audio Devices for Raspberry Pi and Pico  
 
+![Handmade Hi-Fi Audio](https://bokunimo.net/blog/wp-content/uploads/2022/12/DSC_2025.jpg)
+
 ## Contents
 
 * Internet Radio and Jukebox for Raspberry Pi  
