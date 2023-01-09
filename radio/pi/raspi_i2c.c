@@ -830,6 +830,11 @@ byte i2c_lcd_init(void){
 		return;
 	#endif
 	byte ret=0;
+	/**************************** 8バイトをまとめて転送 ***********************/
+	byte data[8]={0x00,0x39,0x14,0x73,0x5E,0x6C,0x38,0x0C};	// 0x00 + コマンド7バイト
+	ret+=!i2c_write(I2C_lcd,data,8);
+	
+	/**************************** 一致ずつ転送する方法 *************************
 	byte data[2];
 
 	data[0]=0x00; data[1]=0x39; ret+=!i2c_write(I2C_lcd,data,2);	// IS=1
@@ -852,6 +857,7 @@ byte i2c_lcd_init(void){
 	data[0]=0x00; data[1]=0x0C; ret+=!i2c_write(I2C_lcd,data,2);	// DisplayON	0xC
 
 //	i2c_lcd_print("Hello!  I2C LCD by Wataru Kunino");
+	*/
 	return !ret;
 }
 
