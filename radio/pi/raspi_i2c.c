@@ -832,7 +832,13 @@ byte i2c_lcd_init(void){
 	byte ret=0;
 	/**************************** 8バイトをまとめて転送 ***********************/
 	byte data[8]={0x00,0x39,0x14,0x73,0x5E,0x6C,0x38,0x0C};	// 0x00 + コマンド7バイト
-	ret+=!i2c_write(I2C_lcd,data,8);
+	// ret+=!i2c_write(I2C_lcd,data,8); // 仕様外(動作はする)
+	
+	ret+=!i2c_write(I2C_lcd,data,6);
+	delay(200);
+	data[1]=data[6];
+	data[2]=data[7];
+	ret+=!i2c_write(I2C_lcd,data,3);
 	
 	/**************************** 一致ずつ転送する方法 *************************
 	byte data[2];
