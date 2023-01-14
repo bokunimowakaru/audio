@@ -28,8 +28,8 @@
 #   $ make clean ⏎
 #   $ make ⏎
 #   $ ./radio.sh ⏎
-#   (音が出ないときは、下記のカード番号、デバイス番号を変更して再実行)
-#   $ vi audio/radio/pi/radio.sh ⏎
+#   (音が出ないときは、aplay -l でカード番号とデバイス番号を確認し、設定する)
+#   設定ファイル audio/radio/pi/radio.sh
 #       export AUDIODEV="hw:1,0"
 #
 # (参考) 自動起動：
