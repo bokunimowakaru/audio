@@ -762,7 +762,7 @@ byte i2c_lcd_out(byte y,byte *lcd){
 		ret += !i2c_write(I2C_lcd, data, 2);
 		data[0]= 0x40; // 書き込みモード
 		for(i=0;i<_lcd_size_x;i+=8){
-			memcpy(data+1, lcd, 8);
+			memcpy(data+1, lcd + i, 8);
 			ret += !i2c_write(I2C_lcd, data, 9);
 		}
 	}else{
