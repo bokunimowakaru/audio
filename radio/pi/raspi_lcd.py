@@ -76,7 +76,10 @@ class RaspiLcd:
 		app = [path]	# 起動設定
 		if self.ignoreError == True:
 			app.append('-i')
-		if self.bar is not None:
+		if self.bar is None:
+			if self.reset_port > 0:
+				app.append('-r'+str(self.reset_port))
+		else:
 			app.append('-n')
 		self.bar = 'inited'
 		app.append('-b')
@@ -84,13 +87,10 @@ class RaspiLcd:
 			app.append('-w'+str(self.width))
 		if y == 2:
 			app.append('-y'+str(y))
-		elif self.reset_port > 0:
-			app.append('-r'+str(self.reset_port))
-		
 		app.append(str(data[0]))
 		if len(data) >= 2:
 			app.append(str(data[1]))
-		print(app)									# DEBUG app引数確認用
+		# print(app)									# DEBUG app引数確認用
 		res = subprocess.run(app,input=None,stdout=subprocess.PIPE)# サブプロセスとして起動
 		ret = res.returncode							# 終了コードをretへ代入
 		if ret != 0:
@@ -111,15 +111,15 @@ class RaspiLcd:
 			if res.returncode != 0: 					# 終了コードを確認
 				print(res.stdout.decode().strip())		# 結果を表示
 				print('WARN: Failed to Disable Port',self.reset_port)
-		print(datetime.datetime.today().strftime('%Y/%m/%d %H:%M:%S'), end=' ') # 日時
-		print('LCD Done')
+		if sys.meta_path is not None:
+			print(datetime.datetime.today().strftime('%Y/%m/%d %H:%M:%S'), 'LCD Done')
 
 def main():
 	s = ''
 	raspiLcd = RaspiLcd(ignoreError=True,x=16,reset=16) # raspiLcdの生成
-	if sys.argv[1].isnumeric():
+	if len(sys.argv) >= 2 and sys.argv[1].isnumeric():
 		s = [int(sys.argv[1])]
-		if sys.argv[2].isnumeric():
+		if len(sys.argv) >= 3 and sys.argv[2].isnumeric():
 			s.append(int(sys.argv[2]))
 		raspiLcd.printBar(s)
 		return
