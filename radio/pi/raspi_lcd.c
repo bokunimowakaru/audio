@@ -155,7 +155,8 @@ int main(int argc,char **argv){
 			if( !i2c_lcd_init_xy(WIDTH,2) ){
 				fprintf(stderr,"I2C ERROR in LCD_INIT\n");
 				if( ERROR_CHECK ) return 2;
-			}
+			}else printf("LCD init\n");
+			// delay(199);
 			i=64; //フォント転送バイト数
 			if(WIDTH < 16) i=32;
 			if( !i2c_lcd_set_fonts(font_lv, i) ){
@@ -250,7 +251,7 @@ int main(int argc,char **argv){
 		else if( !i2c_lcd_init_xy(WIDTH,2) ){
 			fprintf(stderr,"I2C ERROR in LCD_INIT\n");
 			if( ERROR_CHECK ) return 2;
-		}
+		} else printf("LCD init\n");
 		if( !i2c_lcd_print(s) ){
 			fprintf(stderr,"I2C ERROR in LCD_PRINT row=1\n");
 			if( ERROR_CHECK ) return 3;
@@ -260,7 +261,7 @@ int main(int argc,char **argv){
 		else if( !i2c_lcd_init_xy(WIDTH,2) ){
 			fprintf(stderr,"I2C ERROR in LCD_INIT\n");
 			if( ERROR_CHECK ) return 2;
-		}
+		}else printf("LCD init\n");
 		if( !i2c_lcd_print2(s) ){
 			fprintf(stderr,"I2C ERROR in LCD_PRINT row=2\n");
 			if( ERROR_CHECK ) return 3;
