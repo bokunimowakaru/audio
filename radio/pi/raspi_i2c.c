@@ -1004,6 +1004,7 @@ byte i2c_lcd_set_fonts(const byte *s, int len){
 		memcpy(data+1, s+i, 8);
 		// for(j=0;j<9;j++) printf("%02x ",data[j]); printf("\n");
 		ret += !i2c_write(I2C_lcd, data, 9);	// CG-RAMへの転送
+		// delay(1);
 	}
 	return !ret;
 	/*

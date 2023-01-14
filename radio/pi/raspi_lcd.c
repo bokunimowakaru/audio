@@ -164,6 +164,7 @@ int main(int argc,char **argv){
 				if( ERROR_CHECK ) return 4;
 			}
 			printf("send %d fonts\n",i/8);
+			// delay(199);
 		}
 		for(y = ROW; y < 2; y++){
 			bar = (atoi(argv[num]) * WIDTH) / 50 - 1;
@@ -193,8 +194,12 @@ int main(int argc,char **argv){
 				if( ERROR_CHECK ) return 4;
 			}
 			num++;
-			if(num >= argc) break;
+			if(num >= argc){
+				// if(y==0)i2c_lcd_out(1, "                ");
+				break;
+			}
 		}
+		i2c_close();
 		/* 下記はpeak表示ありの場合
 		peak = WIDTH * 2;
 		for(i=0;i<WIDTH;i++){
