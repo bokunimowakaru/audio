@@ -17,7 +17,7 @@ from time import sleep			# スリープ実行モジュールの取得
 import pyaudio
 from math import log10
 import sys
-sys.path.append('../../radio/pi')
+sys.path.append('../../radio/pi')	# audio/radio/pi/raspi_lcd #################
 import raspi_lcd
 
 raspiLcd = raspi_lcd.RaspiLcd(ignoreError=True,x=16,reset=16)	# raspiLcdの生成
