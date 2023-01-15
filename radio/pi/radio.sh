@@ -70,7 +70,7 @@
 #
 
 export SDL_AUDIODRIVER=alsa # オーディオ出力にALSAを使用する設定
-export AUDIODEV="hw:1,0"    # aplay -lで表示されたカード番号とサブデバイス番号を入力する
+export AUDIODEV="hw:0,0"    # aplay -lで表示されたカード番号とサブデバイス番号を入力する
 FILEPATH="/home/pi/Music"   # MusicBox用のファイルパス
 TEMP_DIR="/radio_sh_tmp"    # MusicBox用のファイルパス
 BUTTON_IO="27"              # ボタン操作する場合はIOポート番号を指定する(使用しないときは0)
