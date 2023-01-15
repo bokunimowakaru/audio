@@ -166,8 +166,8 @@ radio (){
         url_ch=(${urls[$(($1 - 1))]})
         lcd_s2=${url_ch[0]}
         lcd "InternetRadio_"${1} ${lcd_s2}
-        kill `pidof ffplay` &> /dev/null
         if [ $AUDIO_APP = "ffplay" ]; then
+            kill `pidof ffplay` &> /dev/null
             ffplay -nodisp ${url_ch[1]} &> /dev/null &
         fi
     else
@@ -189,8 +189,8 @@ music_box (){
             lcd_s2="no title"
         fi
         lcd "${lcd_s1}" "${lcd_s2}"
-        kill `pidof ffplay` &> /dev/null
         if [ $AUDIO_APP = "ffplay" ]; then
+            kill `pidof ffplay` &> /dev/null
             ffplay -nodisp -autoexit ${FILEPATH}${TEMP_DIR}/${filen}.lnk &> /dev/null &
         fi
     else
@@ -378,16 +378,20 @@ while true; do
         button
         if [ $? -eq 0 ]; then
             echo `date` "[next] button is pressed" >> $LOG 2>&1
-            kill `pidof ffplay`
+            if [ $AUDIO_APP = "ffplay" ]; then
+                kill `pidof ffplay`
+            fi
             play 1
             button_shutdown
         fi
         sleep 0.03
     done
-    pidof ffplay > /dev/null
-    if [ $? -ne 0 ]; then
-        echo `date` "[pidof] detected no music" >> $LOG 2>&1
-        play 1
+    if [ $AUDIO_APP = "ffplay" ]; then
+        pidof ffplay > /dev/null
+        if [ $? -ne 0 ]; then
+            echo `date` "[pidof] detected no music" >> $LOG 2>&1
+            play 1
+        fi
     fi
     if [ $SECONDS -gt 60 ]; then
         SECONDS=$((`date |cut -d":" -f3|awk '{printf("%d",$1)}'`))   # 00～09秒の時に10の位に0が入るのをawkで対策
