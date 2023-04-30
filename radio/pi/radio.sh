@@ -131,7 +131,9 @@ lcd_reset (){
     # fi
     echo >> $LOG 2>&1
     sleep 0.1
-    $LCD_APP -i -w16 -r${LCD_IO} "LCD reset GPIO"${LCD_IO} > /dev/null 2>&1
+    if [ -n "$LCD_APP" ]; then
+        $LCD_APP -i -w16 -r${LCD_IO} "LCD reset GPIO"${LCD_IO} > /dev/null 2>&1
+    fi
     sleep 0.1
 }
 
